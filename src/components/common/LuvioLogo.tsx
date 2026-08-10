@@ -32,7 +32,7 @@ export const LuvioLogo: React.FC<LuvioLogoProps> = ({
   const mark = (
     <Image
       src={src}
-      alt="Luvio"
+      alt="Luvio Harvest"
       width={size}
       height={Math.round(size * aspect)}
       className={cn('object-contain', className)}
@@ -53,7 +53,7 @@ export const LuvioLogo: React.FC<LuvioLogoProps> = ({
           wordmarkClassName
         )}
       >
-        luvio
+        luvio <span className="brand-gradient-text">harvest</span>
       </span>
     </span>
   );

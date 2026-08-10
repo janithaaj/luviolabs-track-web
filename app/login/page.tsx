@@ -59,7 +59,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center">
           <LuvioLogo variant="mark" size={72} className="mb-5" />
           <h1 className="font-title text-[28px] font-bold tracking-tight text-[#0C2A43]">
-            luvio <span className="brand-gradient-text">track</span>
+            luvio <span className="brand-gradient-text">harvest</span>
           </h1>
           <p className="mt-1.5 text-[13px] text-[#64748B]">
             Sign in to track time and manage your team

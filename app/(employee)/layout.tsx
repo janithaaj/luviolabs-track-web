@@ -25,7 +25,9 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
             <div className="flex items-center gap-2">
               <LuvioLogoBadge size={28} />
-              <span className="font-title text-[15px] font-bold text-[#0C2A43]">luvio track</span>
+              <span className="font-title text-[15px] font-bold text-[#0C2A43]">
+                luvio <span className="brand-gradient-text">harvest</span>
+              </span>
               <span className="ml-2 rounded border border-[#E2E8F0] bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase text-[#475569]">
                 Employee
               </span>

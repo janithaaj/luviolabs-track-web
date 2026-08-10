@@ -101,7 +101,7 @@ export const AdminSidebar: React.FC = () => {
         <Link href="/work/timesheets" className="mb-4 flex items-center gap-2 px-1">
           <LuvioLogoBadge size={28} />
           <span className="font-title text-[17px] font-bold tracking-tight text-[#0C2A43] lowercase">
-            luvio
+            luvio <span className="brand-gradient-text">harvest</span>
           </span>
         </Link>
 

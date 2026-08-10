@@ -21,7 +21,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Luvio Track",
+  title: "Luvio Harvest",
   description: "Time tracking, projects, invoices, and team management",
   icons: {
     icon: "/logo/logo-mark.svg",
