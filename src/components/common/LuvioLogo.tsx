@@ -15,10 +15,9 @@ interface LuvioLogoProps {
 }
 
 /**
- * Brand mark from `app/assets/logo` (also served via `/logo/*`).
- * - mark: gradient PNG icon
+ * Brand mark from `/logo/*`.
+ * - mark / full: transparent gradient SVG (safe on light backgrounds)
  * - white: white SVG (use on brand-gradient / dark surfaces)
- * - full: larger gradient mark for auth heroes
  */
 export const LuvioLogo: React.FC<LuvioLogoProps> = ({
   variant = 'mark',
@@ -27,17 +26,17 @@ export const LuvioLogo: React.FC<LuvioLogoProps> = ({
   showWordmark = false,
   wordmarkClassName,
 }) => {
-  const src =
-    variant === 'white' ? '/logo/logo-white.svg' : '/logo/logo-gradient.png';
+  const src = variant === 'white' ? '/logo/logo-white.svg' : '/logo/logo-mark.svg';
+  const aspect = variant === 'white' ? 958 / 827 : 958 / 827;
 
   const mark = (
     <Image
       src={src}
       alt="Luvio"
       width={size}
-      height={Math.round(size * (1148 / 1017))}
+      height={Math.round(size * aspect)}
       className={cn('object-contain', className)}
-      priority={variant === 'full'}
+      priority={variant === 'full' || size >= 48}
     />
   );
 

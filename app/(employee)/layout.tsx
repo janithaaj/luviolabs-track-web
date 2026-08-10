@@ -22,7 +22,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
     <AuthGuard allowedRoles={['EMPLOYEE']}>
       <div className="flex min-h-screen flex-col bg-white text-[#0C2A43]">
         <div className="border-b border-[#E2E8F0] bg-[#F8F5FF]">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-8">
             <div className="flex items-center gap-2">
               <LuvioLogoBadge size={28} />
               <span className="font-title text-[15px] font-bold text-[#0C2A43]">luvio track</span>

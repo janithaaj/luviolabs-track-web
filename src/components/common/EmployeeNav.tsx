@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Clock, Send, Bell, User } from 'lucide-react';
 
 export const EmployeeNav: React.FC = () => {
@@ -16,7 +16,7 @@ export const EmployeeNav: React.FC = () => {
   ];
 
   return (
-    <nav className="mx-auto flex max-w-5xl items-center gap-1 overflow-x-auto px-4 pb-2 sm:px-6">
+    <nav className="mx-auto flex w-full max-w-6xl items-center gap-1 overflow-x-auto px-4 pb-2 sm:px-8">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;

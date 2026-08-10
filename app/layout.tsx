@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   title: "Luvio Track",
   description: "Time tracking, projects, invoices, and team management",
   icons: {
-    icon: "/logo/logo-gradient.png",
-    apple: "/logo/logo-gradient.png",
+    icon: "/logo/logo-mark.svg",
+    apple: "/logo/logo-mark.svg",
   },
 };
 

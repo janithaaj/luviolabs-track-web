@@ -55,15 +55,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8F5FF] px-4">
-      <div className="w-full max-w-md space-y-6">
+      <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center">
-          <div className="mb-4">
-            <LuvioLogo variant="mark" size={64} className="drop-shadow-sm" />
-          </div>
+          <LuvioLogo variant="mark" size={72} className="mb-5" />
           <h1 className="font-title text-[28px] font-bold tracking-tight text-[#0C2A43]">
             luvio <span className="brand-gradient-text">track</span>
           </h1>
-          <p className="mt-1 text-[13px] text-[#475569]">
+          <p className="mt-1.5 text-[13px] text-[#64748B]">
             Sign in to track time and manage your team
           </p>
         </div>

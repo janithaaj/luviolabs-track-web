@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/use-auth-store';
 import { useTimerStore } from '../../store/use-timer-store';
-import { projectService } from '../../services/project-service';
 import { useRouter } from 'next/navigation';
 import { LuvioLogoBadge } from './LuvioLogo';
 
@@ -33,7 +32,7 @@ export const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { currentUser, logout } = useAuthStore();
-  const { startTimer } = useTimerStore();
+  const { activeTimer } = useTimerStore();
 
   const handleLogout = () => {
     logout();
@@ -41,21 +40,17 @@ export const AdminSidebar: React.FC = () => {
   };
 
   const handleStartDefaultTimer = async () => {
-    try {
-      const projects = await projectService.getProjects();
-      const project = projects.find((p) => p.status === 'ACTIVE') || projects[0];
-      if (!project) {
-        alert('No projects available. Create a project first.');
-        return;
-      }
-      const taskId = project.taskIds?.[0] || 'task-4';
-      await startTimer(project.id, taskId, {
-        projectName: project.name,
-        projectCode: project.code,
-      });
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Could not start timer');
+    if (activeTimer) {
+      router.push('/work/timesheets');
+      window.setTimeout(() => {
+        document.getElementById('luvio-active-timer')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        });
+      }, 100);
+      return;
     }
+    router.push('/work/timesheets?open=timer');
   };
 
   const navSections = [

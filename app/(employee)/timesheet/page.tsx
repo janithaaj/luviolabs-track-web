@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../../src/store/use-auth-store';
 import { useUIStore, TimesheetViewMode } from '../../../src/store/use-ui-store';
 import { useTimerStore } from '../../../src/store/use-timer-store';
@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   Lock,
   ChevronDown,
+  Play,
 } from 'lucide-react';
 import { format, parseISO, isSameDay } from 'date-fns';
 
@@ -67,7 +68,7 @@ export default function TimesheetPage() {
     selectedDateForEntry,
   } = useUIStore();
 
-  const { startTimer, lastLoggedAt } = useTimerStore();
+  const { startTimer, lastLoggedAt, activeTimer } = useTimerStore();
 
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [submission, setSubmission] = useState<WeeklySubmission | null>(null);
@@ -75,6 +76,8 @@ export default function TimesheetPage() {
   const [catalogTasks, setCatalogTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [entryIntent, setEntryIntent] = useState<'log' | 'timer'>('log');
+  const entryIntentRef = useRef<'log' | 'timer'>('log');
 
   const [formProjectId, setFormProjectId] = useState('');
   const [formTaskId, setFormTaskId] = useState('');
@@ -131,6 +134,7 @@ export default function TimesheetPage() {
 
   useEffect(() => {
     if (editingEntry) {
+      setEntryIntent('log');
       setFormProjectId(editingEntry.projectId);
       setFormTaskId(editingEntry.taskId);
       setFormDurationInput(formatMinutesAsColon(editingEntry.durationMinutes));
@@ -138,7 +142,7 @@ export default function TimesheetPage() {
       setFormDate(editingEntry.date);
       setFormError('');
     } else if (isEntryDrawerOpen) {
-      setFormDurationInput('0:00');
+      setFormDurationInput(entryIntentRef.current === 'timer' ? '0:00' : '');
       setFormWorkCompleted('');
       setFormDate(selectedDateForEntry || formatDateString(weekDays[0]));
       setFormError('');
@@ -200,7 +204,27 @@ export default function TimesheetPage() {
 
   const openAdd = (dateStr?: string) => {
     if (isLocked) return;
+    entryIntentRef.current = 'log';
+    setEntryIntent('log');
     openEntryDrawer(undefined, dateStr || startDateStr);
+  };
+
+  const openStartTimer = () => {
+    if (isLocked) return;
+    if (activeTimer) {
+      const el = document.getElementById('luvio-active-timer');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      el?.classList.add('ring-2', 'ring-[#9333EA]', 'ring-offset-2');
+      window.setTimeout(() => {
+        el?.classList.remove('ring-2', 'ring-[#9333EA]', 'ring-offset-2');
+      }, 1200);
+      setMessage('A timer is already running — use the controls above to pause or stop it.');
+      return;
+    }
+    if (assignedProjects.length === 0) return;
+    entryIntentRef.current = 'timer';
+    setEntryIntent('timer');
+    openEntryDrawer(undefined, formatDateString(new Date()));
   };
 
   const handleSaveEntry = async () => {
@@ -292,14 +316,6 @@ export default function TimesheetPage() {
     }
   };
 
-  const openTimer = () => {
-    if (isLocked) return;
-    setFormDurationInput('0:00');
-    setFormWorkCompleted('');
-    setFormError('');
-    openAdd(formatDateString(new Date()));
-  };
-
   const statusBadge = () => {
     if (!submission || submission.status === 'DRAFT') return null;
     const s = submission.status;
@@ -324,23 +340,9 @@ export default function TimesheetPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header: Timesheet / Timer (opens entry modal on same page) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-1">
-            <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
-            <span className="text-[28px] font-bold text-[#E2E8F0]" aria-hidden>
-              /
-            </span>
-            <button
-              type="button"
-              onClick={openTimer}
-              disabled={isLocked || assignedProjects.length === 0}
-              className="text-[28px] font-bold tracking-tight text-[#94A3B8] hover:text-[#9333EA] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer transition-colors"
-            >
-              Timer
-            </button>
-          </div>
+          <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
           {statusBadge()}
         </div>
         <div className="inline-flex rounded-md border border-[#E2E8F0] bg-white p-0.5">
@@ -383,16 +385,27 @@ export default function TimesheetPage() {
         </div>
       )}
 
-      {/* Toolbar: + week nav total */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Toolbar: Add · Start timer · week nav · total */}
+      <div className="flex flex-wrap items-center gap-2.5">
         <button
           type="button"
           onClick={() => openAdd()}
           disabled={isLocked || assignedProjects.length === 0}
-          className="flex h-8 w-8 items-center justify-center rounded-md bg-[#3B82F6] text-white hover:bg-[#2563EB] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
-          aria-label="Add entry"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[#9333EA] px-2.5 text-[12px] font-semibold text-white hover:bg-[#7e22ce] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          title="Log hours"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={openStartTimer}
+          disabled={isLocked || assignedProjects.length === 0}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-2.5 text-[12px] font-semibold text-[#1E293B] hover:border-[#9333EA]/40 hover:bg-[#F8F5FF] hover:text-[#9333EA] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+          title={activeTimer ? 'Focus running timer' : 'Start a timer'}
+        >
+          <Play className="h-3.5 w-3.5 fill-current" />
+          {activeTimer ? 'Timer running' : 'Start timer'}
         </button>
         <WeekNavigator
           weekStart={activeWeekMonday}
@@ -728,6 +741,7 @@ export default function TimesheetPage() {
         isOpen={isEntryDrawerOpen}
         onClose={closeEntryDrawer}
         mode={editingEntry ? 'edit' : 'create'}
+        intent={editingEntry ? 'log' : entryIntent}
         projects={assignedProjects}
         tasks={availableTasks}
         projectId={formProjectId}

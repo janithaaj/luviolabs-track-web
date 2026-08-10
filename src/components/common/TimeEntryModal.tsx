@@ -31,6 +31,11 @@ export interface TimeEntryModalProps {
   onNotesChange: (value: string) => void;
   onSave: () => void | Promise<void>;
   onStartTimer?: () => void | Promise<void>;
+  /**
+   * log = Save hours (default for + Add)
+   * timer = Start timer when duration is empty
+   */
+  intent?: 'log' | 'timer';
   /** Extra fields above project (e.g. employee select for admin). */
   children?: React.ReactNode;
   isSaving?: boolean;
@@ -55,6 +60,7 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({
   onNotesChange,
   onSave,
   onStartTimer,
+  intent = 'log',
   children,
   isSaving,
 }) => {
@@ -62,7 +68,8 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({
   const selectedProject = projects.find((p) => p.id === projectId);
   const durationMinutes = parseDurationToMinutes(durationInput);
   const canSave = durationMinutes > 0;
-  const showStartTimer = mode === 'create' && !!onStartTimer && !canSave;
+  const showStartTimer =
+    intent === 'timer' && mode === 'create' && !!onStartTimer && !canSave;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -98,7 +105,11 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({
       >
         <div className="flex items-start justify-between gap-4 border-b border-[#ebebeb] px-5 py-4">
           <h2 id={titleId} className="text-[20px] font-bold leading-tight text-[#1d1d1d]">
-            {mode === 'edit' ? 'Edit time entry' : 'New time entry'}
+            {mode === 'edit'
+              ? 'Edit time entry'
+              : intent === 'timer'
+                ? 'Start timer'
+                : 'New time entry'}
           </h2>
           <button
             type="button"

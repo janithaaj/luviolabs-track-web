@@ -77,7 +77,7 @@ export const TimerWidget: React.FC = () => {
   return (
     <>
       {activeTimer ? (
-        <div className="flex items-center gap-3 bg-white border border-[#E2E8F0] px-3 py-1.5 rounded-xl shadow-sm timer-active-pulse w-fit">
+        <div className="flex items-center gap-3 bg-white border border-[#E2E8F0] px-3 py-1.5 rounded-xl shadow-sm timer-active-pulse w-fit" id="luvio-active-timer">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-md bg-[#F5F0FF] text-[#9333EA] animate-pulse">
               <Clock className="w-4 h-4" />

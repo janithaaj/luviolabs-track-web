@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Eye, Plus } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Eye, Plus, Play } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '../../../../src/components/ui/button';
 import { Select } from '../../../../src/components/ui/select';
@@ -45,7 +45,7 @@ export default function AdminTimesheetsPage() {
   const { activeWeekMonday, nextWeek, previousWeek, jumpToToday } = useUIStore();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { startTimer } = useTimerStore();
+  const { startTimer, activeTimer } = useTimerStore();
 
   const [view, setView] = useState<ViewMode>('Week');
   const [employees, setEmployees] = useState<User[]>([]);
@@ -54,10 +54,12 @@ export default function AdminTimesheetsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [catalogTasks, setCatalogTasks] = useState<Task[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [entryIntent, setEntryIntent] = useState<'log' | 'timer'>('log');
+  const entryIntentRef = useRef<'log' | 'timer'>('log');
   const [formUserId, setFormUserId] = useState('');
   const [formProjectId, setFormProjectId] = useState('');
   const [formTaskId, setFormTaskId] = useState('');
-  const [formDuration, setFormDuration] = useState('0:00');
+  const [formDuration, setFormDuration] = useState('');
   const [formDate, setFormDate] = useState(activeWeekMonday);
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
@@ -119,14 +121,28 @@ export default function AdminTimesheetsPage() {
   const totalMins = entries.reduce((a, e) => a + e.durationMinutes, 0);
 
   const openAdd = (dateStr?: string) => {
+    entryIntentRef.current = 'log';
+    setEntryIntent('log');
     setFormDate(dateStr || startDate);
-    setFormDuration('0:00');
+    setFormDuration('');
     setFormNotes('');
     setFormError('');
     setIsDrawerOpen(true);
   };
 
-  const openTimer = () => {
+  const openStartTimer = () => {
+    if (activeTimer) {
+      const el = document.getElementById('luvio-active-timer');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      el?.classList.add('ring-2', 'ring-[#9333EA]', 'ring-offset-2');
+      window.setTimeout(() => {
+        el?.classList.remove('ring-2', 'ring-[#9333EA]', 'ring-offset-2');
+      }, 1200);
+      setMessage('A timer is already running — use the controls above to pause or stop it.');
+      return;
+    }
+    entryIntentRef.current = 'timer';
+    setEntryIntent('timer');
     setFormDate(formatDateString(new Date()));
     setFormDuration('0:00');
     setFormNotes('');
@@ -136,7 +152,7 @@ export default function AdminTimesheetsPage() {
 
   useEffect(() => {
     if (searchParams.get('open') === 'timer') {
-      openTimer();
+      openStartTimer();
       router.replace('/work/timesheets');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,19 +237,7 @@ export default function AdminTimesheetsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="inline-flex items-center gap-1">
-          <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
-          <span className="text-[28px] font-bold text-[#E2E8F0]" aria-hidden>
-            /
-          </span>
-          <button
-            type="button"
-            onClick={openTimer}
-            className="text-[28px] font-bold tracking-tight text-[#94A3B8] hover:text-[#9333EA] cursor-pointer transition-colors"
-          >
-            Timer
-          </button>
-        </div>
+        <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-md border border-[#E2E8F0] bg-white p-0.5">
             {(['Day', 'Week', 'Calendar'] as const).map((mode) => (
@@ -266,14 +270,24 @@ export default function AdminTimesheetsPage() {
 
       <GettingStartedPayrollBar />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2.5">
         <button
           type="button"
           onClick={() => openAdd()}
-          className="flex h-8 w-8 items-center justify-center rounded-md bg-[#3B82F6] text-white hover:bg-[#2563EB] cursor-pointer"
-          aria-label="Add entry"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[#9333EA] px-2.5 text-[12px] font-semibold text-white hover:bg-[#7e22ce] cursor-pointer"
+          title="Log hours"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={openStartTimer}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[#E2E8F0] bg-white px-2.5 text-[12px] font-semibold text-[#1E293B] hover:border-[#9333EA]/40 hover:bg-[#F8F5FF] hover:text-[#9333EA] cursor-pointer"
+          title={activeTimer ? 'Focus running timer' : 'Start a timer'}
+        >
+          <Play className="h-3.5 w-3.5 fill-current" />
+          {activeTimer ? 'Timer running' : 'Start timer'}
         </button>
         <WeekNavigator
           weekStart={activeWeekMonday}
@@ -631,6 +645,7 @@ export default function AdminTimesheetsPage() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         mode="create"
+        intent={entryIntent}
         projects={projects}
         tasks={tasks}
         projectId={formProjectId}
