@@ -228,10 +228,14 @@ export default function AdminTimesheetsPage() {
   };
 
   const handleDeleteEntry = async (id: string) => {
-    await timesheetService.deleteEntry(id);
-    if (viewEntryId === id) closeView();
-    setMessage('Entry deleted.');
-    load();
+    try {
+      await timesheetService.deleteEntry(id);
+      if (viewEntryId === id) closeView();
+      setMessage('Entry deleted.');
+      load();
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : 'Failed to delete entry.');
+    }
   };
 
   return (

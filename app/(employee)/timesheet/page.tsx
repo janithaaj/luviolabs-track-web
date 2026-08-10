@@ -289,8 +289,12 @@ export default function TimesheetPage() {
 
   const handleDeleteEntry = async (id: string) => {
     if (!confirm('Delete this time entry?')) return;
-    await timesheetService.deleteEntry(id);
-    loadData();
+    try {
+      await timesheetService.deleteEntry(id);
+      loadData();
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : 'Failed to delete entry.');
+    }
   };
 
   const handleCopyPreviousWeek = async () => {
