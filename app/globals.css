@@ -1,26 +1,169 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-family-title: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-family-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-family-label: var(--font-jetbrains), ui-monospace, monospace;
+  --font-family-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-family-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --color-luvio-violet: #8b2fe8;
+  --color-primary-purple: #9333ea;
+  --color-luvio-indigo: #6a4bff;
+  --color-gradient-indigo: #6d4dff;
+  --color-luvio-blue: #2c79ff;
+  --color-primary-blue: #3b82f6;
+  --color-deep-navy: #0c2a43;
+  --color-dark-slate: #1e293b;
+  --color-slate-gray: #475569;
+  --color-light-gray: #e2e8f0;
+  --color-white: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Brand */
+    --luvio-violet: #8b2fe8;
+    --primary-purple: #9333ea;
+    --luvio-indigo: #6a4bff;
+    --gradient-indigo: #6d4dff;
+    --luvio-blue: #2c79ff;
+    --primary-blue: #3b82f6;
+    --deep-navy: #0c2a43;
+    --dark-slate: #1e293b;
+    --slate-gray: #475569;
+    --light-gray: #e2e8f0;
+    --white: #ffffff;
+
+    --brand-gradient: linear-gradient(125deg, #9333ea 0%, #6d4dff 50%, #2c79ff 100%);
+    --brand-soft: #f5f0ff;
+    --brand-muted: #ede9fe;
+    --brand-border: #e0e7ff;
+
+    /* Semantic (mapped to brand) */
+    --background: var(--white);
+    --foreground: var(--deep-navy);
+    --card: var(--white);
+    --card-foreground: var(--deep-navy);
+    --card-border: var(--light-gray);
+    --sidebar-bg: #f8f5ff;
+    --sidebar-border: #ebe4ff;
+    --primary: var(--primary-purple);
+    --primary-hover: #7e22ce;
+    --primary-foreground: var(--white);
+    --brand-orange: var(--primary-purple);
+    --brand-orange-hover: #7e22ce;
+    --brand-orange-soft: var(--brand-soft);
+    --brand-orange-muted: var(--brand-muted);
+    --secondary: #f1f5f9;
+    --secondary-foreground: var(--dark-slate);
+    --muted: #f8fafc;
+    --muted-foreground: var(--slate-gray);
+    --accent: var(--brand-soft);
+    --accent-foreground: var(--primary-purple);
+    --border: var(--light-gray);
+    --input: var(--white);
+    --ring: var(--luvio-indigo);
+    --empty-bg: #f8fafc;
+    --trial-bg: var(--deep-navy);
+    --billable: var(--luvio-blue);
+    --non-billable: #93c5fd;
+    --success: var(--primary-blue);
+    --success-hover: #2563eb;
+    --radius: 0.5rem;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-title {
+    font-family: var(--font-sora), "Sora", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  label,
+  .font-label,
+  th {
+    font-family: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  .font-body {
+    font-family: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .font-mono,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Surfaces */
+.harvest-card {
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+}
+
+.harvest-empty {
+  background: var(--empty-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+}
+
+.harvest-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.brand-gradient {
+  background-image: var(--brand-gradient);
+}
+
+.brand-gradient-text {
+  background-image: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes timerPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(147, 51, 234, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
+  }
+}
+
+.timer-active-pulse {
+  animation: timerPulse 2s infinite;
 }

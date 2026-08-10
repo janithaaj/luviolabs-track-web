@@ -1,0 +1,186 @@
+# FE CI: lint/build always; e2e boots sibling Nest API + Mongo.
+#
+# Assumptions:
+# - This repo is named luvio-tracker
+# - API lives at <github.repository_owner>/luvio-tracker-api (same org/user)
+# - Override via workflow_dispatch input `api_repository` (owner/name)
+# - Private API: set repo secret API_CHECKOUT_TOKEN (PAT with contents:read)
+#   Public same-org API: default GITHUB_TOKEN is enough
+
+name: Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      api_repository:
+        description: 'API GitHub repo as owner/name (default: <owner>/luvio-tracker-api)'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: fe-test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+  PLAYWRIGHT_API_URL: http://localhost:4000/api/v1
+  PLAYWRIGHT_ADMIN_EMAIL: admin@luvio.com
+  PLAYWRIGHT_ADMIN_PASSWORD: admin123
+  PLAYWRIGHT_EMPLOYEE_EMAIL: employee@luvio.com
+  PLAYWRIGHT_EMPLOYEE_PASSWORD: employee123
+
+jobs:
+  lint-build:
+    name: Lint & build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout FE
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ env.NEXT_PUBLIC_API_URL }}
+
+  e2e:
+    name: Playwright e2e
+    needs: lint-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # API runtime (e2e hits a real Nest process, not mongodb-memory-server).
+      # Override via repo secrets when set; otherwise CI defaults (non-prod).
+      PORT: '4000'
+      MONGODB_URI: mongodb://127.0.0.1:27017/luvio-tracker-ci
+      JWT_SECRET: ${{ secrets.JWT_SECRET != '' && secrets.JWT_SECRET || 'ci-jwt-secret-luvio-tracker' }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET != '' && secrets.JWT_REFRESH_SECRET || 'ci-jwt-refresh-secret-luvio-tracker' }}
+      JWT_EXPIRES_IN: 1h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost:3001,http://127.0.0.1:3001
+      NODE_ENV: development
+      CI: true
+
+    steps:
+      - name: Checkout FE
+        uses: actions/checkout@v4
+        with:
+          path: luvio-tracker
+
+      - name: Resolve API repository
+        id: api_repo
+        run: |
+          if [ -n "${{ inputs.api_repository }}" ]; then
+            echo "name=${{ inputs.api_repository }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ github.repository_owner }}/luvio-tracker-api" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout API
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.api_repo.outputs.name }}
+          path: luvio-tracker-api
+          # Private sibling: set API_CHECKOUT_TOKEN (PAT). Else github.token.
+          token: ${{ secrets.API_CHECKOUT_TOKEN != '' && secrets.API_CHECKOUT_TOKEN || github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            luvio-tracker/package-lock.json
+            luvio-tracker-api/package-lock.json
+
+      - name: Install API dependencies
+        working-directory: luvio-tracker-api
+        run: npm ci
+
+      - name: Seed API database
+        working-directory: luvio-tracker-api
+        run: npm run seed
+
+      - name: Build API
+        working-directory: luvio-tracker-api
+        run: npm run build
+
+      - name: Start API
+        working-directory: luvio-tracker-api
+        run: |
+          # nest-cli emits dist/main.js (start:prod path may differ locally)
+          nohup node dist/main.js > /tmp/luvio-api.log 2>&1 &
+          echo $! > /tmp/luvio-api.pid
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null -X POST http://127.0.0.1:4000/api/v1/auth/login \
+              -H 'Content-Type: application/json' \
+              -d "{\"email\":\"${PLAYWRIGHT_ADMIN_EMAIL}\",\"password\":\"${PLAYWRIGHT_ADMIN_PASSWORD}\"}"; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API failed to become ready"
+          cat /tmp/luvio-api.log || true
+          exit 1
+
+      - name: Install FE dependencies
+        working-directory: luvio-tracker
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: luvio-tracker
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        working-directory: luvio-tracker
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_API_URL: ${{ env.NEXT_PUBLIC_API_URL }}
+          PLAYWRIGHT_API_URL: ${{ env.PLAYWRIGHT_API_URL }}
+          PLAYWRIGHT_ADMIN_EMAIL: ${{ env.PLAYWRIGHT_ADMIN_EMAIL }}
+          PLAYWRIGHT_ADMIN_PASSWORD: ${{ env.PLAYWRIGHT_ADMIN_PASSWORD }}
+          PLAYWRIGHT_EMPLOYEE_EMAIL: ${{ env.PLAYWRIGHT_EMPLOYEE_EMAIL }}
+          PLAYWRIGHT_EMPLOYEE_PASSWORD: ${{ env.PLAYWRIGHT_EMPLOYEE_PASSWORD }}
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            luvio-tracker/playwright-report/
+            luvio-tracker/test-results/
+          retention-days: 7
+
+      - name: Dump API logs on failure
+        if: failure()
+        run: cat /tmp/luvio-api.log || true

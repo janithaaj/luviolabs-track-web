@@ -1,0 +1,9 @@
+# Playwright artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Local credential overrides (never commit secrets)
+.env
+.env.local
