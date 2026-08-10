@@ -4,9 +4,9 @@ import { defineConfig, devices } from '@playwright/test';
  * FE e2e against a running Nest API on :4000.
  * Next is started (or reused) on :3001 via webServer.
  *
- * Credentials (optional overrides):
+ * Required credentials (env or e2e/.env):
  *   PLAYWRIGHT_ADMIN_EMAIL / PLAYWRIGHT_ADMIN_PASSWORD
- * Only the admin user is seeded; create employees via Team → Invite.
+ * Must match the API seed admin (ADMIN_EMAIL / ADMIN_PASSWORD).
  */
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 

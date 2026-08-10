@@ -8,14 +8,22 @@ async function globalSetup() {
     process.env.NEXT_PUBLIC_API_URL ||
     'http://localhost:4000/api/v1';
 
+  const email = process.env.PLAYWRIGHT_ADMIN_EMAIL?.trim();
+  const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD?.trim();
+  if (!email || !password) {
+    throw new Error(
+      [
+        'Missing PLAYWRIGHT_ADMIN_EMAIL / PLAYWRIGHT_ADMIN_PASSWORD.',
+        'Copy e2e/.env.example → e2e/.env and set credentials that match your seeded admin.',
+      ].join('\n')
+    );
+  }
+
   try {
     const res = await fetch(`${apiBase}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: process.env.PLAYWRIGHT_ADMIN_EMAIL || 'admin@luvio.com',
-        password: process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'admin123',
-      }),
+      body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -27,8 +35,7 @@ async function globalSetup() {
       [
         `Nest API is not reachable at ${apiBase} (${message}).`,
         'Start the sibling API on port 4000 before running e2e:',
-        '  cd ../luvio-tracker-api && npm run start:dev',
-        'Seed built-in admin: admin@luvio.com / admin123',
+        '  cd ../luvio-tracker-api && ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run seed && npm run start:dev',
       ].join('\n')
     );
   }

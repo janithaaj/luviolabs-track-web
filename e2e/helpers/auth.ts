@@ -25,10 +25,22 @@ function loadOptionalEnv() {
 
 loadOptionalEnv();
 
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(
+      `Missing ${name}. Set it in the environment or copy e2e/.env.example → e2e/.env.`
+    );
+  }
+  return value;
+}
+
 export const credentials = {
-  admin: {
-    email: process.env.PLAYWRIGHT_ADMIN_EMAIL || 'admin@luvio.com',
-    password: process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'admin123',
+  get admin() {
+    return {
+      email: requireEnv('PLAYWRIGHT_ADMIN_EMAIL'),
+      password: requireEnv('PLAYWRIGHT_ADMIN_PASSWORD'),
+    };
   },
 };
 
@@ -38,6 +50,7 @@ export async function clearAuth(page: Page) {
   await page.evaluate(() => {
     localStorage.removeItem('luvio-track-auth-v3');
     localStorage.clear();
+    sessionStorage.clear();
   });
 }
 

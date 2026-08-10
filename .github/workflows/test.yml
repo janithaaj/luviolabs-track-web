@@ -29,8 +29,6 @@ env:
   NODE_VERSION: '20'
   NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
   PLAYWRIGHT_API_URL: http://localhost:4000/api/v1
-  PLAYWRIGHT_ADMIN_EMAIL: admin@luvio.com
-  PLAYWRIGHT_ADMIN_PASSWORD: admin123
 
 jobs:
   lint-build:
@@ -76,11 +74,9 @@ jobs:
 
     env:
       # API runtime (e2e hits a real Nest process, not mongodb-memory-server).
-      # Override via repo secrets when set; otherwise CI defaults (non-prod).
+      # JWT secrets: prefer repo secrets; otherwise generate per-run (never commit real secrets).
       PORT: '4000'
       MONGODB_URI: mongodb://127.0.0.1:27017/luvio-tracker-ci
-      JWT_SECRET: ${{ secrets.JWT_SECRET != '' && secrets.JWT_SECRET || 'ci-jwt-secret-luvio-tracker' }}
-      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET != '' && secrets.JWT_REFRESH_SECRET || 'ci-jwt-refresh-secret-luvio-tracker' }}
       JWT_EXPIRES_IN: 1h
       JWT_REFRESH_EXPIRES_IN: 7d
       CORS_ORIGIN: http://localhost:3001,http://127.0.0.1:3001
@@ -110,6 +106,21 @@ jobs:
           # Private sibling: set API_CHECKOUT_TOKEN (PAT). Else github.token.
           token: ${{ secrets.API_CHECKOUT_TOKEN != '' && secrets.API_CHECKOUT_TOKEN || github.token }}
 
+      - name: Generate ephemeral CI credentials
+        run: |
+          if [ -n "${{ secrets.JWT_SECRET }}" ]; then
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> "$GITHUB_ENV"
+          else
+            echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${{ secrets.JWT_REFRESH_SECRET }}" ]; then
+            echo "JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}" >> "$GITHUB_ENV"
+          else
+            echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          fi
+          echo "ADMIN_EMAIL=ci-admin-${GITHUB_RUN_ID}@example.invalid" >> "$GITHUB_ENV"
+          echo "ADMIN_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -126,6 +137,11 @@ jobs:
       - name: Seed API database
         working-directory: luvio-tracker-api
         run: npm run seed
+        env:
+          ADMIN_EMAIL: ${{ env.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ env.ADMIN_PASSWORD }}
+          JWT_SECRET: ${{ env.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ env.JWT_REFRESH_SECRET }}
 
       - name: Build API
         working-directory: luvio-tracker-api
@@ -133,6 +149,11 @@ jobs:
 
       - name: Start API
         working-directory: luvio-tracker-api
+        env:
+          JWT_SECRET: ${{ env.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ env.JWT_REFRESH_SECRET }}
+          ADMIN_EMAIL: ${{ env.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ env.ADMIN_PASSWORD }}
         run: |
           # nest-cli emits dist/main.js (start:prod path may differ locally)
           nohup node dist/main.js > /tmp/luvio-api.log 2>&1 &
@@ -140,7 +161,7 @@ jobs:
           for i in $(seq 1 60); do
             if curl -sf -o /dev/null -X POST http://127.0.0.1:4000/api/v1/auth/login \
               -H 'Content-Type: application/json' \
-              -d "{\"email\":\"${PLAYWRIGHT_ADMIN_EMAIL}\",\"password\":\"${PLAYWRIGHT_ADMIN_PASSWORD}\"}"; then
+              -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}"; then
               echo "API is up"
               exit 0
             fi
@@ -164,8 +185,8 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ env.NEXT_PUBLIC_API_URL }}
           PLAYWRIGHT_API_URL: ${{ env.PLAYWRIGHT_API_URL }}
-          PLAYWRIGHT_ADMIN_EMAIL: ${{ env.PLAYWRIGHT_ADMIN_EMAIL }}
-          PLAYWRIGHT_ADMIN_PASSWORD: ${{ env.PLAYWRIGHT_ADMIN_PASSWORD }}
+          PLAYWRIGHT_ADMIN_EMAIL: ${{ env.ADMIN_EMAIL }}
+          PLAYWRIGHT_ADMIN_PASSWORD: ${{ env.ADMIN_PASSWORD }}
 
       - name: Upload Playwright report
         if: failure()
