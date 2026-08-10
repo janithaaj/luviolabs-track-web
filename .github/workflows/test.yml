@@ -31,8 +31,6 @@ env:
   PLAYWRIGHT_API_URL: http://localhost:4000/api/v1
   PLAYWRIGHT_ADMIN_EMAIL: admin@luvio.com
   PLAYWRIGHT_ADMIN_PASSWORD: admin123
-  PLAYWRIGHT_EMPLOYEE_EMAIL: employee@luvio.com
-  PLAYWRIGHT_EMPLOYEE_PASSWORD: employee123
 
 jobs:
   lint-build:
@@ -168,8 +166,6 @@ jobs:
           PLAYWRIGHT_API_URL: ${{ env.PLAYWRIGHT_API_URL }}
           PLAYWRIGHT_ADMIN_EMAIL: ${{ env.PLAYWRIGHT_ADMIN_EMAIL }}
           PLAYWRIGHT_ADMIN_PASSWORD: ${{ env.PLAYWRIGHT_ADMIN_PASSWORD }}
-          PLAYWRIGHT_EMPLOYEE_EMAIL: ${{ env.PLAYWRIGHT_EMPLOYEE_EMAIL }}
-          PLAYWRIGHT_EMPLOYEE_PASSWORD: ${{ env.PLAYWRIGHT_EMPLOYEE_PASSWORD }}
 
       - name: Upload Playwright report
         if: failure()

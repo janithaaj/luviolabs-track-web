@@ -76,4 +76,11 @@ export const teamService = {
   async syncProjectAssignments(_projectId: string, _teamMemberIds: string[]): Promise<void> {
     // No-op: backend syncs user.assignedProjectIds on PUT /projects/:id/members
   },
+
+  async deleteUser(id: string): Promise<void> {
+    const res = await apiCall<{ ok: true }>(`/users/${id}`, { method: 'DELETE' });
+    if (res.error && res.status !== 204) {
+      throw new Error(res.error || 'Failed to delete user');
+    }
+  },
 };

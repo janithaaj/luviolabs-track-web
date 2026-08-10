@@ -30,10 +30,6 @@ export const credentials = {
     email: process.env.PLAYWRIGHT_ADMIN_EMAIL || 'admin@luvio.com',
     password: process.env.PLAYWRIGHT_ADMIN_PASSWORD || 'admin123',
   },
-  employee: {
-    email: process.env.PLAYWRIGHT_EMPLOYEE_EMAIL || 'employee@luvio.com',
-    password: process.env.PLAYWRIGHT_EMPLOYEE_PASSWORD || 'employee123',
-  },
 };
 
 /** Clear persisted auth so each test starts from a clean login. */
@@ -60,10 +56,4 @@ export async function loginAsAdmin(page: Page) {
   await loginAs(page, credentials.admin);
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByRole('heading', { level: 1 })).toContainText(/Good morning/i);
-}
-
-export async function loginAsEmployee(page: Page) {
-  await loginAs(page, credentials.employee);
-  await expect(page).toHaveURL(/\/timesheet/);
-  await expect(page.getByRole('heading', { name: 'Timesheet' })).toBeVisible();
 }

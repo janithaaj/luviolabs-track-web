@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Header } from '../../src/components/common/Header';
 import { EmployeeNav } from '../../src/components/common/EmployeeNav';
 import { AuthGuard } from '../../src/components/common/AuthGuard';
 import { TimerWidget } from '../../src/components/common/TimerWidget';
@@ -22,7 +21,6 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   return (
     <AuthGuard allowedRoles={['EMPLOYEE']}>
       <div className="flex min-h-screen flex-col bg-white text-[#0C2A43]">
-        <Header />
         <div className="border-b border-[#E2E8F0] bg-[#F8F5FF]">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2">

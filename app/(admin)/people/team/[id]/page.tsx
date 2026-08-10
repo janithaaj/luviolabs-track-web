@@ -4,7 +4,7 @@ import React, { useState, useEffect, use } from 'react';
 import { teamService } from '../../../../../src/services/team-service';
 import { projectService } from '../../../../../src/services/project-service';
 import { timesheetService } from '../../../../../src/services/timesheet-service';
-import { User, Project, WeeklySubmission } from '../../../../../src/types';
+import { User, Project, WeeklySubmission, UserStatus } from '../../../../../src/types';
 import { Card } from '../../../../../src/components/ui/card';
 import { Badge } from '../../../../../src/components/ui/badge';
 import { Button } from '../../../../../src/components/ui/button';
@@ -16,9 +16,12 @@ import {
   monthlyHoursFromWeeklyCapacity,
 } from '../../../../../src/lib/utils';
 import { parseISO } from 'date-fns';
-import { ArrowLeft, History, Save } from 'lucide-react';
+import { ArrowLeft, History, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../../../src/store/use-auth-store';
+import { Select } from '../../../../../src/components/ui/select';
+import { DEPARTMENTS } from '../../../../../src/lib/constants';
 
 /** Plain numeric string for <input type="number"> (commas make the field appear empty). */
 function toNumberInputValue(n: number | undefined | null): string {
@@ -46,6 +49,7 @@ function applyPayFields(
 export default function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const userId = resolvedParams.id;
+  const router = useRouter();
   const { currentUser, isHydrated } = useAuthStore();
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -53,12 +57,17 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState('');
   const [assignedProjects, setAssignedProjects] = useState<Project[]>([]);
   const [submission, setSubmission] = useState<WeeklySubmission | null>(null);
+  const [profileName, setProfileName] = useState('');
+  const [profileDepartment, setProfileDepartment] = useState('');
+  const [profileStatus, setProfileStatus] = useState<UserStatus>('ACTIVE');
   const [monthlySalary, setMonthlySalary] = useState('');
   const [costRate, setCostRate] = useState('');
   const [billableRate, setBillableRate] = useState('');
   const [capacityHours, setCapacityHours] = useState('');
   const [costManual, setCostManual] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -75,6 +84,9 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
           return;
         }
         setUser(u);
+        setProfileName(u.name);
+        setProfileDepartment(u.department || DEPARTMENTS[0] || 'Engineering');
+        setProfileStatus((u.status as UserStatus) || 'ACTIVE');
         applyPayFields(u, {
           setMonthlySalary,
           setCostRate,
@@ -117,6 +129,48 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     );
     if (rate > 0 || (parseFloat(String(salary).replace(/,/g, '')) || 0) === 0) {
       setCostRate(toNumberInputValue(rate));
+    }
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !user) return;
+    setSavingProfile(true);
+    setError('');
+    setMessage('');
+    try {
+      const updated = await teamService.updateUser(user.id, {
+        name: profileName.trim(),
+        department: profileDepartment,
+        status: profileStatus,
+      });
+      setUser(updated);
+      setProfileName(updated.name);
+      setProfileDepartment(updated.department);
+      setProfileStatus((updated.status as UserStatus) || 'ACTIVE');
+      setMessage('Profile updated.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!isAdmin || !user) return;
+    if (user.id === currentUser?.id) {
+      setError('You cannot delete your own account.');
+      return;
+    }
+    if (!window.confirm(`Remove ${user.name} from the team? This cannot be undone.`)) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await teamService.deleteUser(user.id);
+      router.push('/people/team');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove team member');
+      setDeleting(false);
     }
   };
 
@@ -176,17 +230,31 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/people/team"
-          className="rounded-xl border border-[#E2E8F0] bg-white p-2 text-[#475569] hover:text-[#0C2A43]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <span className="font-label text-xs text-[#9333EA]">{user.department}</span>
-          <h1 className="font-title text-2xl font-bold tracking-tight text-[#0C2A43]">{user.name}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/people/team"
+            className="rounded-xl border border-[#E2E8F0] bg-white p-2 text-[#475569] hover:text-[#0C2A43]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div>
+            <span className="font-label text-xs text-[#9333EA]">{user.department}</span>
+            <h1 className="font-title text-2xl font-bold tracking-tight text-[#0C2A43]">{user.name}</h1>
+          </div>
         </div>
+        {isAdmin && user.id !== currentUser?.id ? (
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            isLoading={deleting}
+            leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+            onClick={() => void handleDelete()}
+          >
+            Remove
+          </Button>
+        ) : null}
       </div>
 
       {message && (
@@ -199,6 +267,48 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
           {error}
         </div>
       )}
+
+      {isAdmin ? (
+        <Card className="space-y-4 p-4">
+          <h3 className="font-title text-base font-bold text-[#0C2A43]">Profile</h3>
+          <form onSubmit={handleSaveProfile} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Input
+              label="Full name"
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              required
+            />
+            <Select
+              label="Department"
+              value={profileDepartment}
+              onChange={(e) => setProfileDepartment(e.target.value)}
+              options={DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+            />
+            <Select
+              label="Status"
+              value={profileStatus}
+              onChange={(e) => setProfileStatus(e.target.value as UserStatus)}
+              options={[
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'INACTIVE', label: 'Inactive' },
+                { value: 'ON_LEAVE', label: 'On leave' },
+                { value: 'INVITED', label: 'Invited' },
+              ]}
+            />
+            <div className="sm:col-span-3">
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                isLoading={savingProfile}
+                leftIcon={<Save className="h-3.5 w-3.5" />}
+              >
+                Save profile
+              </Button>
+            </div>
+          </form>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <Card className="flex flex-col items-center space-y-4 p-6 text-center">

@@ -92,7 +92,7 @@ export const TimerWidget: React.FC = () => {
             </div>
           </div>
 
-          <div className="font-mono text-sm font-extrabold text-[#9333EA] tracking-wider bg-[#F8FAFC] px-2.5 py-1 rounded-md border border-[#E2E8F0]">
+          <div className="font-mono text-sm font-extrabold text-[#9333EA] tracking-wider bg-[#F8F5FF] px-2.5 py-1 rounded-md border border-[#EBE4FF]">
             {formatSecondsToTimer(activeTimer.elapsedSeconds)}
           </div>
 
@@ -102,7 +102,7 @@ export const TimerWidget: React.FC = () => {
                 type="button"
                 onClick={() => pauseTimer()}
                 title="Pause Timer"
-                className="p-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg bg-[#F5F0FF] text-[#9333EA] hover:bg-[#EDE5FF] transition-colors cursor-pointer"
               >
                 <Pause className="w-3.5 h-3.5" />
               </button>
@@ -111,7 +111,7 @@ export const TimerWidget: React.FC = () => {
                 type="button"
                 onClick={() => resumeTimer()}
                 title="Resume Timer"
-                className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg bg-[#F5F0FF] text-[#9333EA] hover:bg-[#EDE5FF] transition-colors cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5" />
               </button>
@@ -121,7 +121,7 @@ export const TimerWidget: React.FC = () => {
               type="button"
               onClick={stopTimer}
               title="Stop & Log Entry"
-              className="p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg bg-[#F5F0FF] text-[#7e22ce] hover:bg-[#EDE5FF] transition-colors cursor-pointer"
             >
               <Square className="w-3.5 h-3.5" />
             </button>
@@ -139,9 +139,9 @@ export const TimerWidget: React.FC = () => {
         description={`${displayTimer.projectName} — ${displayTimer.taskName} (${durationMinutes} mins logged)`}
       >
         <div className="flex flex-col gap-4 mt-2">
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center text-xs">
-            <span className="text-slate-400">Duration Recorded:</span>
-            <span className="text-emerald-400 font-bold font-mono">
+          <div className="flex items-center justify-between rounded-lg border border-[#EBE4FF] bg-[#F8F5FF] p-3 text-[13px]">
+            <span className="font-medium text-[#64748B]">Duration recorded</span>
+            <span className="font-mono text-[14px] font-bold text-[#9333EA]">
               {formatSecondsToTimer(displayTimer.elapsedSeconds)} ({durationMinutes}m)
             </span>
           </div>
@@ -155,11 +155,12 @@ export const TimerWidget: React.FC = () => {
               updateWorkDescription(e.target.value);
             }}
             rows={4}
+            className="border-[#E2E8F0] focus:border-[#9333EA] focus:ring-[#9333EA]/30"
           />
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-          <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex items-center justify-between gap-3 border-t border-[#EBE4FF] pt-4">
             <Button
               variant="ghost"
               onClick={async () => {
@@ -173,7 +174,7 @@ export const TimerWidget: React.FC = () => {
             </Button>
             <div className="flex gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={() => {
                   setStopModalOpen(false);
                   setError('');
@@ -181,8 +182,8 @@ export const TimerWidget: React.FC = () => {
               >
                 Cancel
               </Button>
-              <Button variant="success" onClick={handleSaveTimerEntry} isLoading={isSaving}>
-                Save Entry
+              <Button variant="primary" onClick={handleSaveTimerEntry} isLoading={isSaving}>
+                Save entry
               </Button>
             </div>
           </div>

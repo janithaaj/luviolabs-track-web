@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * Credentials (optional overrides):
  *   PLAYWRIGHT_ADMIN_EMAIL / PLAYWRIGHT_ADMIN_PASSWORD
- *   PLAYWRIGHT_EMPLOYEE_EMAIL / PLAYWRIGHT_EMPLOYEE_PASSWORD
+ * Only the admin user is seeded; create employees via Team → Invite.
  */
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 

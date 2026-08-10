@@ -28,7 +28,7 @@ async function globalSetup() {
         `Nest API is not reachable at ${apiBase} (${message}).`,
         'Start the sibling API on port 4000 before running e2e:',
         '  cd ../luvio-tracker-api && npm run start:dev',
-        'Seed users: admin@luvio.com / admin123, employee@luvio.com / employee123',
+        'Seed built-in admin: admin@luvio.com / admin123',
       ].join('\n')
     );
   }

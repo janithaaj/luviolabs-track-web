@@ -9,21 +9,24 @@ import {
 } from 'lucide-react';
 import { teamService } from '../../../../src/services/team-service';
 import { projectService } from '../../../../src/services/project-service';
-import { User } from '../../../../src/types';
+import { User, UserStatus } from '../../../../src/types';
 import { Project } from '../../../../src/types';
 import { Button } from '../../../../src/components/ui/button';
 import { Input } from '../../../../src/components/ui/input';
 import { Select } from '../../../../src/components/ui/select';
 import { Badge } from '../../../../src/components/ui/badge';
 import { Drawer } from '../../../../src/components/ui/drawer';
+import { ActionMenu } from '../../../../src/components/ui/action-menu';
 import { GettingStartedPayrollBar } from '../../../../src/components/common/GettingStartedPayrollBar';
 import { WeekNavigator } from '../../../../src/components/common/WeekNavigator';
 import { useAuthStore } from '../../../../src/store/use-auth-store';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { DEPARTMENTS } from '../../../../src/lib/constants';
 import { costRateFromMonthlySalary, formatCurrency } from '../../../../src/lib/utils';
 
 export default function AdminTeamPage() {
+  const router = useRouter();
   const { currentUser, createEmployee } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -44,6 +47,15 @@ export default function AdminTeamPage() {
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [assignmentMsg, setAssignmentMsg] = useState('');
+  const [listMessage, setListMessage] = useState('');
+  const [listError, setListError] = useState('');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editStatus, setEditStatus] = useState<UserStatus>('ACTIVE');
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadUsers = async () => {
     const [u, p] = await Promise.all([teamService.getUsers(), projectService.getProjects()]);
@@ -101,6 +113,58 @@ export default function AdminTeamPage() {
     await loadUsers();
   };
 
+  const openEdit = (user: User) => {
+    setEditingUser(user);
+    setEditName(user.name);
+    setEditDepartment(user.department || DEPARTMENTS[0] || 'Engineering');
+    setEditStatus(user.status || 'ACTIVE');
+    setListError('');
+    setIsEditOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsSavingEdit(true);
+    setListError('');
+    setListMessage('');
+    try {
+      await teamService.updateUser(editingUser.id, {
+        name: editName.trim(),
+        department: editDepartment,
+        status: editStatus,
+      });
+      setIsEditOpen(false);
+      setEditingUser(null);
+      setListMessage('Team member updated.');
+      await loadUsers();
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to update team member');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    if (user.id === currentUser?.id) {
+      setListError('You cannot delete your own account.');
+      return;
+    }
+    if (!window.confirm(`Remove ${user.name} from the team? This cannot be undone.`)) return;
+    setDeletingId(user.id);
+    setListError('');
+    setListMessage('');
+    try {
+      await teamService.deleteUser(user.id);
+      setListMessage(`Removed ${user.name}.`);
+      await loadUsers();
+    } catch (err) {
+      setListError(err instanceof Error ? err.message : 'Failed to remove team member');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -148,6 +212,17 @@ export default function AdminTeamPage() {
       </div>
 
       <GettingStartedPayrollBar variant="expanded" />
+
+      {listMessage ? (
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+          {listMessage}
+        </div>
+      ) : null}
+      {listError ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+          {listError}
+        </div>
+      ) : null}
 
       {activeTab === 'Members' && (
         <>
@@ -205,6 +280,7 @@ export default function AdminTeamPage() {
               <th className="px-4 py-3">Billable /h</th>
               <th className="px-4 py-3">Projects</th>
               <th className="px-4 py-3">Capacity</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F1F5F9]">
@@ -251,6 +327,23 @@ export default function AdminTeamPage() {
                 </td>
                 <td className="px-4 py-3 tabular-nums text-[#0C2A43]">
                   {(user.capacityHours || 40).toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <ActionMenu
+                    items={[
+                      { label: 'Edit', onClick: () => openEdit(user) },
+                      {
+                        label: 'Open profile',
+                        onClick: () => router.push(`/people/team/${user.id}`),
+                      },
+                      {
+                        label: deletingId === user.id ? 'Removing…' : 'Remove',
+                        danger: true,
+                        disabled: deletingId === user.id || user.id === currentUser?.id,
+                        onClick: () => handleDeleteUser(user),
+                      },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}
@@ -416,6 +509,62 @@ export default function AdminTeamPage() {
           <p className="text-[11px] text-[#64748B]">
             Signed in as {currentUser?.email}. Only admins can create accounts.
           </p>
+        </form>
+      </Drawer>
+
+      <Drawer
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingUser(null);
+        }}
+        title="Edit team member"
+        description={editingUser?.email}
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <Input
+            label="Full name"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            required
+          />
+          <Select
+            label="Department"
+            value={editDepartment}
+            onChange={(e) => setEditDepartment(e.target.value)}
+            options={DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+          />
+          <Select
+            label="Status"
+            value={editStatus}
+            onChange={(e) => setEditStatus(e.target.value as UserStatus)}
+            options={[
+              { value: 'ACTIVE', label: 'Active' },
+              { value: 'INACTIVE', label: 'Inactive' },
+              { value: 'ON_LEAVE', label: 'On leave' },
+              { value: 'INVITED', label: 'Invited' },
+            ]}
+          />
+          {listError && isEditOpen ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+              {listError}
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2 border-t border-[#E2E8F0] pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsEditOpen(false);
+                setEditingUser(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" isLoading={isSavingEdit}>
+              Save changes
+            </Button>
+          </div>
         </form>
       </Drawer>
     </div>

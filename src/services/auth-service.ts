@@ -82,9 +82,7 @@ export const authService = {
     }
 
     apiStorage.setToken(token);
-    if (data.refreshToken) {
-      apiStorage.setRefreshToken(data.refreshToken);
-    }
+    // Do not persist refresh tokens in the browser until refresh flow is implemented.
 
     return {
       success: true,

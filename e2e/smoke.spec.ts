@@ -1,10 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  credentials,
-  loginAs,
-  loginAsAdmin,
-  loginAsEmployee,
-} from './helpers/auth';
+import { credentials, loginAs, loginAsAdmin } from './helpers/auth';
 
 test.describe('Smoke — admin', () => {
   test('admin login lands on dashboard', async ({ page }) => {
@@ -45,7 +40,6 @@ test.describe('Smoke — admin', () => {
     await expect(taskChecks.first()).toBeVisible({ timeout: 15_000 });
     expect(await taskChecks.count()).toBeGreaterThan(0);
 
-    // Create project when possible (client select or inline new client)
     const projectName = `E2E Project ${Date.now()}`;
     const clientSelect = page.locator('form select').first();
     const optionCount = await clientSelect.locator('option').count();
@@ -70,13 +64,5 @@ test.describe('Smoke — admin', () => {
     await page.getByRole('button', { name: 'Save project' }).click();
     await expect(page).toHaveURL(/\/work\/projects(?:\?|$)/, { timeout: 20_000 });
     await expect(page.getByText(projectName)).toBeVisible({ timeout: 15_000 });
-  });
-});
-
-test.describe('Smoke — employee', () => {
-  test('employee login loads timesheet', async ({ page }) => {
-    await loginAsEmployee(page);
-    await expect(page).toHaveURL(/\/timesheet/);
-    await expect(page.getByRole('heading', { name: 'Timesheet' })).toBeVisible();
   });
 });

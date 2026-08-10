@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../store/use-auth-store';
+import { apiStorage } from '../../services/api-client';
 import { Role } from '../../types';
 
 interface AuthGuardProps {
@@ -17,25 +18,29 @@ interface AuthGuardProps {
  */
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children, allowedRoles }) => {
   const router = useRouter();
-  const { isAuthenticated, currentUser, isHydrated } = useAuthStore();
+  const { isAuthenticated, currentUser, isHydrated, logout } = useAuthStore();
+  const [hasSessionToken, setHasSessionToken] = useState(false);
 
   useEffect(() => {
     if (!isHydrated) return;
 
-    if (!isAuthenticated || !currentUser) {
+    const token = apiStorage.getToken();
+    setHasSessionToken(!!token);
+
+    if (!isAuthenticated || !currentUser || !token) {
+      if (isAuthenticated) logout();
       router.replace('/login');
       return;
     }
 
     if (!allowedRoles.includes(currentUser.role)) {
-      // Wrong role: send them to their home
       if (currentUser.role === 'ADMIN') {
         router.replace('/dashboard');
       } else {
         router.replace('/timesheet');
       }
     }
-  }, [isHydrated, isAuthenticated, currentUser, allowedRoles, router]);
+  }, [isHydrated, isAuthenticated, currentUser, allowedRoles, router, logout]);
 
   if (!isHydrated) {
     return (
@@ -45,7 +50,12 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children, allowedRoles }) 
     );
   }
 
-  if (!isAuthenticated || !currentUser || !allowedRoles.includes(currentUser.role)) {
+  if (
+    !isAuthenticated ||
+    !currentUser ||
+    !hasSessionToken ||
+    !allowedRoles.includes(currentUser.role)
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white text-[13px] text-[#475569]">
         Redirecting…

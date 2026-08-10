@@ -2,17 +2,18 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Eye, Plus } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '../../../../src/components/ui/button';
 import { Select } from '../../../../src/components/ui/select';
 import { Drawer } from '../../../../src/components/ui/drawer';
-import { Input } from '../../../../src/components/ui/input';
-import { Textarea } from '../../../../src/components/ui/textarea';
 import { Badge } from '../../../../src/components/ui/badge';
 import { GettingStartedPayrollBar } from '../../../../src/components/common/GettingStartedPayrollBar';
 import { AiPromptBar } from '../../../../src/components/common/AiPromptBar';
 import { WeekNavigator } from '../../../../src/components/common/WeekNavigator';
 import { CalendarClocksGraphic } from '../../../../src/components/common/EmptyStateGraphics';
+import { TimeEntryModal } from '../../../../src/components/common/TimeEntryModal';
 import { useUIStore } from '../../../../src/store/use-ui-store';
+import { useTimerStore } from '../../../../src/store/use-timer-store';
 import { teamService } from '../../../../src/services/team-service';
 import { projectService } from '../../../../src/services/project-service';
 import { timesheetService } from '../../../../src/services/timesheet-service';
@@ -42,6 +43,10 @@ function statusBadgeVariant(
 
 export default function AdminTimesheetsPage() {
   const { activeWeekMonday, nextWeek, previousWeek, jumpToToday } = useUIStore();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { startTimer } = useTimerStore();
+
   const [view, setView] = useState<ViewMode>('Week');
   const [employees, setEmployees] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('ALL');
@@ -52,10 +57,11 @@ export default function AdminTimesheetsPage() {
   const [formUserId, setFormUserId] = useState('');
   const [formProjectId, setFormProjectId] = useState('');
   const [formTaskId, setFormTaskId] = useState('');
-  const [formDuration, setFormDuration] = useState('2');
+  const [formDuration, setFormDuration] = useState('0:00');
   const [formDate, setFormDate] = useState(activeWeekMonday);
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [viewEntryId, setViewEntryId] = useState<string | null>(null);
 
@@ -114,9 +120,27 @@ export default function AdminTimesheetsPage() {
 
   const openAdd = (dateStr?: string) => {
     setFormDate(dateStr || startDate);
+    setFormDuration('0:00');
+    setFormNotes('');
     setFormError('');
     setIsDrawerOpen(true);
   };
+
+  const openTimer = () => {
+    setFormDate(formatDateString(new Date()));
+    setFormDuration('0:00');
+    setFormNotes('');
+    setFormError('');
+    setIsDrawerOpen(true);
+  };
+
+  useEffect(() => {
+    if (searchParams.get('open') === 'timer') {
+      openTimer();
+      router.replace('/work/timesheets');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openView = (entry: TimeEntry) => {
     setViewEntryId(entry.id);
@@ -134,12 +158,11 @@ export default function AdminTimesheetsPage() {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setFormError('');
     const mins = parseDurationToMinutes(formDuration);
     if (mins <= 0) {
-      setFormError('Enter a valid duration.');
+      setFormError('Enter a valid duration (e.g. 0:30, 1:00).');
       return;
     }
     const user = employees.find((u) => u.id === formUserId);
@@ -147,6 +170,7 @@ export default function AdminTimesheetsPage() {
       setFormError('Select an employee.');
       return;
     }
+    setIsSaving(true);
     try {
       await timesheetService.saveEntry({
         userId: user.id,
@@ -162,6 +186,8 @@ export default function AdminTimesheetsPage() {
       load();
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -195,7 +221,19 @@ export default function AdminTimesheetsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
+        <div className="inline-flex items-center gap-1">
+          <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
+          <span className="text-[28px] font-bold text-[#E2E8F0]" aria-hidden>
+            /
+          </span>
+          <button
+            type="button"
+            onClick={openTimer}
+            className="text-[28px] font-bold tracking-tight text-[#94A3B8] hover:text-[#9333EA] cursor-pointer transition-colors"
+          >
+            Timer
+          </button>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-md border border-[#E2E8F0] bg-white p-0.5">
             {(['Day', 'Week', 'Calendar'] as const).map((mode) => (
@@ -589,64 +627,63 @@ export default function AdminTimesheetsPage() {
         ) : null}
       </Drawer>
 
-      <Drawer
+      <TimeEntryModal
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        title="Add time entry"
-        description="Log hours for a teammate on an assigned project"
+        mode="create"
+        projects={projects}
+        tasks={tasks}
+        projectId={formProjectId}
+        taskId={formTaskId}
+        date={formDate}
+        durationInput={formDuration}
+        notes={formNotes}
+        error={formError}
+        isSaving={isSaving}
+        onProjectChange={setFormProjectId}
+        onTaskChange={setFormTaskId}
+        onDateChange={setFormDate}
+        onDurationChange={setFormDuration}
+        onNotesChange={setFormNotes}
+        onSave={handleSave}
+        onStartTimer={async () => {
+          if (!formProjectId || !formTaskId) {
+            setFormError('Select a project and task.');
+            return;
+          }
+          const project = projects.find((p) => p.id === formProjectId);
+          const task = tasks.find((t) => t.id === formTaskId);
+          try {
+            await startTimer(formProjectId, formTaskId, {
+              projectName: project?.name,
+              projectCode: project?.code,
+              taskName: task?.name,
+              description: formNotes || undefined,
+            });
+            setIsDrawerOpen(false);
+          } catch (e) {
+            setFormError(e instanceof Error ? e.message : 'Could not start timer');
+          }
+        }}
       >
-        <form onSubmit={handleSave} className="space-y-4">
-          <Select
-            label="Employee"
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="admin-entry-employee" className="text-[13px] font-bold text-[#1d1d1d]">
+            Employee
+          </label>
+          <select
+            id="admin-entry-employee"
             value={formUserId}
             onChange={(e) => setFormUserId(e.target.value)}
-            options={employees.map((u) => ({ value: u.id, label: u.name }))}
-          />
-          <Select
-            label="Project"
-            value={formProjectId}
-            onChange={(e) => setFormProjectId(e.target.value)}
-            options={projects.map((p) => ({ value: p.id, label: p.name }))}
-          />
-          <Select
-            label="Task"
-            value={formTaskId}
-            onChange={(e) => setFormTaskId(e.target.value)}
-            options={tasks.map((t) => ({ value: t.id, label: t.name }))}
-          />
-          <Input
-            label="Date"
-            type="date"
-            value={formDate}
-            onChange={(e) => setFormDate(e.target.value)}
-          />
-          <Input
-            label="Duration"
-            value={formDuration}
-            onChange={(e) => setFormDuration(e.target.value)}
-            helperText="e.g. 2, 2.5, 2:30"
-          />
-          <Textarea
-            label="Notes"
-            value={formNotes}
-            onChange={(e) => setFormNotes(e.target.value)}
-            rows={3}
-          />
-          {formError && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
-              {formError}
-            </div>
-          )}
-          <div className="flex justify-end gap-2 border-t border-[#E2E8F0] pt-4">
-            <Button type="button" variant="ghost" onClick={() => setIsDrawerOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Save entry
-            </Button>
-          </div>
-        </form>
-      </Drawer>
+            className="h-10 w-full appearance-none rounded border border-[#cfcfcf] bg-white px-3 text-[14px] text-[#1d1d1d] outline-none focus:border-[#8a8a8a] focus:ring-1 focus:ring-[#8a8a8a]/40 cursor-pointer"
+          >
+            {employees.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </TimeEntryModal>
     </div>
   );
 }

@@ -13,24 +13,21 @@ import {
   formatWeekRangeString,
   formatDateString,
   formatMinutesToHoursString,
-  formatMinutesToDecimal,
   parseDurationToMinutes,
   cn,
 } from '../../../src/lib/utils';
 import { Button } from '../../../src/components/ui/button';
 import { Modal } from '../../../src/components/ui/modal';
-import { Drawer } from '../../../src/components/ui/drawer';
-import { Input } from '../../../src/components/ui/input';
-import { Select } from '../../../src/components/ui/select';
-import { Textarea } from '../../../src/components/ui/textarea';
 import { Badge } from '../../../src/components/ui/badge';
 import { WeekNavigator } from '../../../src/components/common/WeekNavigator';
-import { AiPromptBar } from '../../../src/components/common/AiPromptBar';
 import { CalendarClocksGraphic } from '../../../src/components/common/EmptyStateGraphics';
+import {
+  TimeEntryModal,
+  formatMinutesAsColon,
+} from '../../../src/components/common/TimeEntryModal';
 import {
   Plus,
   Copy,
-  Play,
   Send,
   Trash2,
   Edit2,
@@ -81,10 +78,11 @@ export default function TimesheetPage() {
 
   const [formProjectId, setFormProjectId] = useState('');
   const [formTaskId, setFormTaskId] = useState('');
-  const [formDurationInput, setFormDurationInput] = useState('2');
+  const [formDurationInput, setFormDurationInput] = useState('0:00');
   const [formWorkCompleted, setFormWorkCompleted] = useState('');
   const [formDate, setFormDate] = useState(activeWeekMonday);
   const [formError, setFormError] = useState('');
+  const [isSavingEntry, setIsSavingEntry] = useState(false);
 
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,18 +133,20 @@ export default function TimesheetPage() {
     if (editingEntry) {
       setFormProjectId(editingEntry.projectId);
       setFormTaskId(editingEntry.taskId);
-      setFormDurationInput(formatMinutesToDecimal(editingEntry.durationMinutes));
+      setFormDurationInput(formatMinutesAsColon(editingEntry.durationMinutes));
       setFormWorkCompleted(editingEntry.workCompleted);
       setFormDate(editingEntry.date);
-    } else {
-      setFormDurationInput('2');
+      setFormError('');
+    } else if (isEntryDrawerOpen) {
+      setFormDurationInput('0:00');
       setFormWorkCompleted('');
       setFormDate(selectedDateForEntry || formatDateString(weekDays[0]));
+      setFormError('');
       if (assignedProjects.length > 0) {
         setFormProjectId(assignedProjects[0].id);
       }
     }
-  }, [editingEntry, selectedDateForEntry, assignedProjects]);
+  }, [editingEntry, selectedDateForEntry, assignedProjects, isEntryDrawerOpen]);
 
   const selectedProject = assignedProjects.find((p) => p.id === formProjectId);
   const availableTasks = catalogTasks.filter((t) =>
@@ -203,18 +203,18 @@ export default function TimesheetPage() {
     openEntryDrawer(undefined, dateStr || startDateStr);
   };
 
-  const handleSaveEntry = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEntry = async () => {
     setFormError('');
     const parsedMins = parseDurationToMinutes(formDurationInput);
     if (parsedMins <= 0) {
-      setFormError('Please enter a valid duration (e.g. 2, 2.5, 2:30).');
+      setFormError('Please enter a valid duration (e.g. 0:30, 1:00, 2.5).');
       return;
     }
     if (!formProjectId) {
       setFormError('Select a project.');
       return;
     }
+    setIsSavingEntry(true);
     try {
       if (!currentUser) {
         setFormError('You must be signed in.');
@@ -238,6 +238,28 @@ export default function TimesheetPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to save entry.';
       setFormError(msg);
+    } finally {
+      setIsSavingEntry(false);
+    }
+  };
+
+  const handleStartTimerFromModal = async () => {
+    if (!formProjectId || !formTaskId) {
+      setFormError('Select a project and task.');
+      return;
+    }
+    const project = assignedProjects.find((p) => p.id === formProjectId);
+    const task = availableTasks.find((t) => t.id === formTaskId);
+    try {
+      await startTimer(formProjectId, formTaskId, {
+        projectName: project?.name,
+        projectCode: project?.code,
+        taskName: task?.name,
+        description: formWorkCompleted || undefined,
+      });
+      closeEntryDrawer();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Could not start timer');
     }
   };
 
@@ -270,6 +292,14 @@ export default function TimesheetPage() {
     }
   };
 
+  const openTimer = () => {
+    if (isLocked) return;
+    setFormDurationInput('0:00');
+    setFormWorkCompleted('');
+    setFormError('');
+    openAdd(formatDateString(new Date()));
+  };
+
   const statusBadge = () => {
     if (!submission || submission.status === 'DRAFT') return null;
     const s = submission.status;
@@ -294,10 +324,23 @@ export default function TimesheetPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header: title + Day / Week / Calendar */}
+      {/* Header: Timesheet / Timer (opens entry modal on same page) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
+          <div className="inline-flex items-center gap-1">
+            <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Timesheet</h1>
+            <span className="text-[28px] font-bold text-[#E2E8F0]" aria-hidden>
+              /
+            </span>
+            <button
+              type="button"
+              onClick={openTimer}
+              disabled={isLocked || assignedProjects.length === 0}
+              className="text-[28px] font-bold tracking-tight text-[#94A3B8] hover:text-[#9333EA] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer transition-colors"
+            >
+              Timer
+            </button>
+          </div>
           {statusBadge()}
         </div>
         <div className="inline-flex rounded-md border border-[#E2E8F0] bg-white p-0.5">
@@ -361,15 +404,6 @@ export default function TimesheetPage() {
           Total: {formatMinutesToHoursString(totalWeeklyMinutes)}
         </span>
       </div>
-
-      <AiPromptBar
-        label="What would you like to add to your timesheet?"
-        suggestion="1.5 hours yesterday on a client call"
-        onRun={(text) => {
-          setFormWorkCompleted(text);
-          openAdd();
-        }}
-      />
 
       {message && (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
@@ -690,97 +724,27 @@ export default function TimesheetPage() {
         </div>
       </div>
 
-      {/* Add / edit drawer */}
-      <Drawer
+      <TimeEntryModal
         isOpen={isEntryDrawerOpen}
         onClose={closeEntryDrawer}
-        title={editingEntry ? 'Edit time entry' : 'Add time entry'}
-        description={`Log hours for ${formDate}`}
-      >
-        <form onSubmit={handleSaveEntry} className="space-y-4">
-          {formError && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
-              {formError}
-            </div>
-          )}
-          <Select
-            label="Project"
-            value={formProjectId}
-            onChange={(e) => setFormProjectId(e.target.value)}
-            options={assignedProjects.map((p) => ({
-              value: p.id,
-              label: p.code ? `${p.name} (${p.code})` : p.name,
-            }))}
-          />
-          <Select
-            label="Task"
-            value={formTaskId}
-            onChange={(e) => setFormTaskId(e.target.value)}
-            options={availableTasks.map((t) => ({ value: t.id, label: t.name }))}
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Hours"
-              placeholder="e.g. 2.5 or 2:30"
-              value={formDurationInput}
-              onChange={(e) => setFormDurationInput(e.target.value)}
-            />
-            <Input
-              label="Date"
-              type="date"
-              value={formDate}
-              onChange={(e) => setFormDate(e.target.value)}
-            />
-          </div>
-          <Textarea
-            label="Notes"
-            placeholder="What did you work on?"
-            value={formWorkCompleted}
-            onChange={(e) => setFormWorkCompleted(e.target.value)}
-            rows={3}
-          />
-          <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[12px]">
-            <span className="text-[#475569]">Billable</span>
-            <Badge variant={selectedProject?.type === 'NON_BILLABLE' ? 'nonbillable' : 'billable'}>
-              {selectedProject?.type === 'NON_BILLABLE' ? 'Non-billable' : 'Billable'}
-            </Badge>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#E2E8F0] pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                if (!formProjectId || !formTaskId) return;
-                const project = assignedProjects.find((p) => p.id === formProjectId);
-                const task = availableTasks.find((t) => t.id === formTaskId);
-                try {
-                  await startTimer(formProjectId, formTaskId, {
-                    projectName: project?.name,
-                    projectCode: project?.code,
-                    taskName: task?.name,
-                    description: formWorkCompleted || undefined,
-                  });
-                  closeEntryDrawer();
-                } catch (e) {
-                  alert(e instanceof Error ? e.message : 'Could not start timer');
-                }
-              }}
-              leftIcon={<Play className="h-3.5 w-3.5 text-[#3B82F6]" />}
-            >
-              Start timer
-            </Button>
-            <div className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={closeEntryDrawer}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                Save entry
-              </Button>
-            </div>
-          </div>
-        </form>
-      </Drawer>
+        mode={editingEntry ? 'edit' : 'create'}
+        projects={assignedProjects}
+        tasks={availableTasks}
+        projectId={formProjectId}
+        taskId={formTaskId}
+        date={formDate}
+        durationInput={formDurationInput}
+        notes={formWorkCompleted}
+        error={formError}
+        isSaving={isSavingEntry}
+        onProjectChange={setFormProjectId}
+        onTaskChange={setFormTaskId}
+        onDateChange={setFormDate}
+        onDurationChange={setFormDurationInput}
+        onNotesChange={setFormWorkCompleted}
+        onSave={handleSaveEntry}
+        onStartTimer={handleStartTimerFromModal}
+      />
 
       <Modal
         isOpen={isSubmitModalOpen}

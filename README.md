@@ -22,12 +22,12 @@ Smoke UI tests live in `e2e/`. They hit the real Nest API.
 
 **Prerequisites**
 
-1. API running on **http://localhost:4000** (sibling repo `luvio-tracker-api`, with seed users).
+1. API running on **http://localhost:4000** (sibling repo `luvio-tracker-api`, seeded with built-in admin only).
 2. FE is started automatically on **http://localhost:3001** by Playwright (`webServer`), or reuse an existing Next server on that port.
 
 ```bash
 # Terminal 1 — API
-cd ../luvio-tracker-api && npm run start:dev   # or: node dist/main.js
+cd ../luvio-tracker-api && npm run seed && npm run start:dev   # or: node dist/main.js
 
 # Terminal 2 — e2e (starts/reuses Next on :3001)
 cd ../luvio-tracker
@@ -36,18 +36,16 @@ npm run test:e2e
 npm run test:e2e:ui
 ```
 
-**Credentials** (defaults match seed data; override via env or `e2e/.env` — not committed):
+**Credentials** (only admin is seeded; create employees from Team → Invite person):
 
 | Var | Default |
 | --- | --- |
 | `PLAYWRIGHT_ADMIN_EMAIL` | `admin@luvio.com` |
 | `PLAYWRIGHT_ADMIN_PASSWORD` | `admin123` |
-| `PLAYWRIGHT_EMPLOYEE_EMAIL` | `employee@luvio.com` |
-| `PLAYWRIGHT_EMPLOYEE_PASSWORD` | `employee123` |
 
 See `e2e/.env.example`.
 
-**CI:** `.github/workflows/test.yml` runs `lint` + `next build` on every push/PR. The `e2e` job checks out the sibling API repo (`<owner>/luvio-tracker-api`, overridable via `workflow_dispatch` input `api_repository`), starts Mongo + seeded Nest on `:4000`, then runs Playwright. Private API repos need a PAT in secret `API_CHECKOUT_TOKEN`. Seed credentials above are used as CI defaults.
+**CI:** `.github/workflows/test.yml` runs `lint` + `next build` on every push/PR. The `e2e` job checks out the sibling API repo (`<owner>/luvio-tracker-api`, overridable via `workflow_dispatch` input `api_repository`), starts Mongo + seeded Nest on `:4000`, then runs Playwright. Private API repos need a PAT in secret `API_CHECKOUT_TOKEN`. Built-in admin credentials above are used as CI defaults.
 
 ## Learn More
 

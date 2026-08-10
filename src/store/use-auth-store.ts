@@ -2,12 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, CreateEmployeeInput } from '../types';
 import { authService } from '../services/auth-service';
-import { apiStorage } from '../services/api-client';
+import { apiStorage, setUnauthorizedHandler } from '../services/api-client';
 
 interface AuthState {
   currentUser: User | null;
   isAuthenticated: boolean;
-  accessToken: string | null;
   isHydrated: boolean;
   setHydrated: (v: boolean) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -23,7 +22,6 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       currentUser: null,
       isAuthenticated: false,
-      accessToken: null,
       isHydrated: false,
 
       setHydrated: (v) => set({ isHydrated: v }),
@@ -37,7 +35,6 @@ export const useAuthStore = create<AuthState>()(
         set({
           currentUser: result.user,
           isAuthenticated: true,
-          accessToken: result.token
         });
         return { success: true };
       },
@@ -48,7 +45,6 @@ export const useAuthStore = create<AuthState>()(
         set({
           currentUser: null,
           isAuthenticated: false,
-          accessToken: null
         });
       },
 
@@ -70,22 +66,42 @@ export const useAuthStore = create<AuthState>()(
         const fresh = await authService.me();
         if (fresh) {
           set({ currentUser: fresh });
+        } else {
+          // Token invalid / user inactive
+          get().logout();
         }
-      }
+      },
     }),
     {
-      name: 'luvio-track-auth-v3',
+      name: 'luvio-track-auth-v4',
+      // Do not persist access tokens — keep only non-secret session hints.
       partialize: (state) => ({
-        currentUser: state.currentUser,
+        currentUser: state.currentUser
+          ? {
+              ...state.currentUser,
+              // Avoid keeping pay rates in long-lived localStorage
+              monthlySalary: undefined,
+              costRate: undefined,
+              billableRate: undefined,
+            }
+          : null,
         isAuthenticated: state.isAuthenticated,
-        accessToken: state.accessToken
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
-        if (state?.accessToken) {
-          apiStorage.setToken(state.accessToken);
+        const token = apiStorage.getToken();
+        if (!token) {
+          // Session ended (tab closed) — clear persisted auth hints
+          state?.logout();
         }
-      }
+      },
     }
   )
 );
+
+// When any API call returns 401, clear zustand auth (api-client also redirects).
+if (typeof window !== 'undefined') {
+  setUnauthorizedHandler(() => {
+    useAuthStore.getState().logout();
+  });
+}

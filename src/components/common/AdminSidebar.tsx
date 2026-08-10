@@ -63,6 +63,7 @@ export const AdminSidebar: React.FC = () => {
       title: 'Track',
       items: [
         { name: 'Timesheet', href: '/work/timesheets', icon: Clock },
+        { name: 'Timer', href: '/work/timesheets?open=timer', icon: Play },
         { name: 'Expenses', href: '/finance/expenses', icon: Receipt }
       ]
     },
@@ -91,8 +92,12 @@ export const AdminSidebar: React.FC = () => {
     }
   ];
 
-  const isActive = (href: string) =>
-    pathname === href || (href !== '/' && pathname.startsWith(href));
+  const isActive = (href: string) => {
+    const pathOnly = href.split('?')[0];
+    // Timer deep-link should not stay highlighted; Timesheet owns the route
+    if (href.includes('open=timer')) return false;
+    return pathname === href || (pathOnly !== '/' && pathname.startsWith(pathOnly));
+  };
 
   return (
     <aside className="flex h-screen w-[220px] shrink-0 flex-col border-r border-[#EBE4FF] bg-[#F8F5FF] select-none">

@@ -11,19 +11,35 @@ import { LuvioLogo } from '../../src/components/common/LuvioLogo';
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, currentUser, isHydrated } = useAuthStore();
-  const [email, setEmail] = useState('admin@luvio.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [nextPath, setNextPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    setSessionExpired(params.get('reason') === 'session');
+    const next = params.get('next');
+    if (next && next.startsWith('/') && !next.startsWith('//')) {
+      setNextPath(next);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isHydrated || !isAuthenticated || !currentUser) return;
+    if (nextPath) {
+      router.replace(nextPath);
+      return;
+    }
     if (currentUser.role === 'ADMIN') {
       router.replace('/dashboard');
     } else {
       router.replace('/timesheet');
     }
-  }, [isHydrated, isAuthenticated, currentUser, router]);
+  }, [isHydrated, isAuthenticated, currentUser, router, nextPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +69,11 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-sm">
+          {sessionExpired && (
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+              Your session expired. Please sign in again.
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               label="Email"
@@ -88,17 +109,9 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-5 space-y-2 border-t border-[#F1F5F9] pt-4 text-[12px] text-[#475569]">
-            <p className="font-semibold text-[#0C2A43]">Demo accounts (API)</p>
-            <p>
-              <strong>Admin:</strong> admin@luvio.com / admin123
-            </p>
-            <p>
-              <strong>Employee:</strong> employee@luvio.com / employee123
-            </p>
+          <div className="mt-5 border-t border-[#F1F5F9] pt-4 text-[12px] text-[#475569]">
             <p className="text-[11px] text-[#64748B]">
-              Connected to Nest API on port 4000. Admins create more employees from Team → Invite
-              person.
+              Sign in with your workspace account. Admins invite employees from Team after login.
             </p>
           </div>
         </div>

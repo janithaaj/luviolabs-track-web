@@ -2,29 +2,70 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/a
 
 const TOKEN_KEY = 'luvio_track_token_v2';
 const REFRESH_KEY = 'luvio_track_refresh_v2';
+const SESSION_COOKIE = 'luvio_session';
+
+function sessionStore(): Storage | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function setSessionCookie(on: boolean) {
+  if (typeof document === 'undefined') return;
+  if (on) {
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${SESSION_COOKIE}=1; Path=/; SameSite=Lax${secure}`;
+  } else {
+    document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  }
+}
 
 /** Token + small client prefs helpers (no domain mock data). */
 export const apiStorage = {
   getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(TOKEN_KEY);
+    const s = sessionStore();
+    if (!s) return null;
+    return s.getItem(TOKEN_KEY);
   },
 
   setToken(token: string | null): void {
-    if (typeof window === 'undefined') return;
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
+    const s = sessionStore();
+    if (!s) return;
+    if (token) {
+      s.setItem(TOKEN_KEY, token);
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+      } catch {
+        /* ignore */
+      }
+      setSessionCookie(true);
+    } else {
+      s.removeItem(TOKEN_KEY);
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+      } catch {
+        /* ignore */
+      }
+      setSessionCookie(false);
+    }
   },
 
   getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(REFRESH_KEY);
+    // Refresh tokens are not kept in the browser until a refresh endpoint exists.
+    return null;
   },
 
-  setRefreshToken(token: string | null): void {
-    if (typeof window === 'undefined') return;
-    if (token) localStorage.setItem(REFRESH_KEY, token);
-    else localStorage.removeItem(REFRESH_KEY);
+  setRefreshToken(_token: string | null): void {
+    const s = sessionStore();
+    s?.removeItem(REFRESH_KEY);
+    try {
+      localStorage.removeItem(REFRESH_KEY);
+    } catch {
+      /* ignore */
+    }
   },
 
   /** Generic prefs (settings, saved reports) — never seeds business/mock data. */
@@ -58,6 +99,47 @@ export const apiStorage = {
 };
 
 export { API_BASE_URL };
+
+const AUTH_PERSIST_KEY = 'luvio-track-auth-v4';
+
+let unauthorizedHandler: (() => void) | null = null;
+let loggingOut = false;
+
+/** Register a callback (e.g. zustand logout) for session expiry. */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
+function isAuthLoginEndpoint(endpoint: string): boolean {
+  const path = endpoint.split('?')[0];
+  return path === '/auth/login' || path.endsWith('/auth/login');
+}
+
+/** Clear session and send user to login when the API rejects the token. */
+function forceLogoutOnUnauthorized(): void {
+  if (typeof window === 'undefined' || loggingOut) return;
+  loggingOut = true;
+  try {
+    apiStorage.setToken(null);
+    apiStorage.setRefreshToken(null);
+    try {
+      localStorage.removeItem(AUTH_PERSIST_KEY);
+    } catch {
+      /* ignore */
+    }
+    unauthorizedHandler?.();
+    const path = window.location.pathname + window.location.search;
+    if (!path.startsWith('/login')) {
+      const next = encodeURIComponent(path);
+      window.location.assign(`/login?next=${next}&reason=session`);
+    }
+  } finally {
+    // Allow future 401s after a full navigation / re-login
+    window.setTimeout(() => {
+      loggingOut = false;
+    }, 1500);
+  }
+}
 
 function formatErrorMessage(errorData: unknown, status: number): string {
   if (!errorData || typeof errorData !== 'object') {
@@ -99,6 +181,10 @@ export async function apiCall<T>(
     const body = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      // Expired / invalid JWT — end the session (skip login failures)
+      if (response.status === 401 && !isAuthLoginEndpoint(endpoint)) {
+        forceLogoutOnUnauthorized();
+      }
       return {
         data: null,
         error: formatErrorMessage(body, response.status),
