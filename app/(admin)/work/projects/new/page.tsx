@@ -201,7 +201,7 @@ export default function NewProjectPage() {
         taskIds: tasks.map((t) => t.id),
         type: projectType,
         budget:
-          projectType === 'FIXED_FEE'
+          projectType === 'FIXED_FEE' || projectType === 'MONTHLY'
             ? {
                 type: 'TOTAL_AMOUNT',
                 totalAmount: parseFloat(fixedFeeAmount) || 0,
@@ -344,7 +344,7 @@ export default function NewProjectPage() {
 
         <FormRow label="Project type">
           <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {(
                 [
                   {
@@ -356,6 +356,11 @@ export default function NewProjectPage() {
                     type: 'FIXED_FEE' as const,
                     title: 'Fixed Fee',
                     desc: 'Bill a set price, regardless of time tracked'
+                  },
+                  {
+                    type: 'MONTHLY' as const,
+                    title: 'Monthly',
+                    desc: 'Bill a set amount every month (retainer)'
                   },
                   {
                     type: 'NON_BILLABLE' as const,
@@ -498,6 +503,50 @@ export default function NewProjectPage() {
                       />
                     </div>
                     <span className="text-[13px] text-[#475569]">hours</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {projectType === 'MONTHLY' && (
+              <div className="space-y-4 rounded-lg border border-[#E9D5FF] bg-[#F8F5FF] p-4">
+                <div>
+                  <div className="text-[13px] font-bold text-[#0C2A43]">Monthly fee</div>
+                  <p className="mt-0.5 text-[12px] text-[#475569]">
+                    Set the amount billed each month (retainer), regardless of hours tracked.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-[#1E293B]">
+                      {currency === 'LKR' ? 'Rs' : '$'}
+                    </span>
+                    <div className="w-36">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={fixedFeeAmount}
+                        onChange={(e) => setFixedFeeAmount(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <span className="text-[13px] text-[#475569]">{currency} / month</span>
+                  </div>
+                </div>
+                <div className="border-t border-[#E9D5FF] pt-4">
+                  <div className="text-[13px] font-bold text-[#0C2A43]">Optional monthly hours budget</div>
+                  <p className="mt-0.5 text-[12px] text-[#475569]">
+                    Track internal effort against hours each month.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="w-28">
+                      <Input
+                        value={budgetHours}
+                        onChange={(e) => setBudgetHours(e.target.value)}
+                        placeholder="e.g. 40"
+                      />
+                    </div>
+                    <span className="text-[13px] text-[#475569]">hours / month</span>
                   </div>
                 </div>
               </div>

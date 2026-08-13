@@ -16,7 +16,7 @@ export const EmployeeNav: React.FC = () => {
   ];
 
   return (
-    <nav className="mx-auto flex w-full max-w-6xl items-center gap-1 overflow-x-auto px-4 pb-2 sm:px-8">
+    <nav className="mx-auto flex w-full max-w-[1360px] items-center gap-1 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;

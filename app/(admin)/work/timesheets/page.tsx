@@ -338,7 +338,7 @@ export default function AdminTimesheetsPage() {
               </p>
             </div>
           ) : (
-            <div className="harvest-card overflow-hidden p-0">
+            <div className="harvest-card harvest-table-wrap p-0">
               <table className="w-full text-left text-[13px]">
                 <thead>
                   <tr className="border-b border-[#E2E8F0] text-[12px] font-semibold text-[#475569]">

@@ -86,7 +86,7 @@ export default function AdminProjectsPage() {
 
       <div className="space-y-3">
         {filteredProjects.map((p) => {
-          const isFixedFee = p.type === 'FIXED_FEE';
+          const isFeeProject = p.type === 'FIXED_FEE' || p.type === 'MONTHLY';
           const budgetHours =
             p.budget?.totalHours != null && p.budget.totalHours > 0
               ? p.budget.totalHours
@@ -99,10 +99,10 @@ export default function AdminProjectsPage() {
           const barPercent =
             usedPercent != null ? Math.min(100, Math.max(0, usedPercent)) : 0;
           const feeLabel =
-            isFixedFee && p.budget.totalAmount != null
+            isFeeProject && p.budget.totalAmount != null
               ? `${p.currency} ${p.budget.totalAmount.toLocaleString(undefined, {
                   maximumFractionDigits: 2,
-                })}`
+                })}${p.type === 'MONTHLY' ? '/mo' : ''}`
               : null;
 
           return (

@@ -26,16 +26,16 @@ export const HarvestAIButton: React.FC = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#1E293B] shadow-[0_2px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-shadow cursor-pointer"
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white p-2.5 text-[13px] font-semibold text-[#1E293B] shadow-[0_2px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-shadow cursor-pointer sm:bottom-5 sm:right-5 sm:px-3.5 sm:py-2"
       >
         <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#9333EA] text-white">
           <Sparkles className="h-3 w-3" />
         </span>
-        Harvest AI
+        <span className="hidden sm:inline">Harvest AI</span>
       </button>
 
       {open && (
-        <div className="fixed bottom-20 right-5 z-50 flex h-[380px] w-[340px] flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-xl">
+        <div className="fixed inset-x-3 bottom-16 z-50 flex h-[min(380px,70dvh)] flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-xl sm:inset-x-auto sm:right-5 sm:bottom-20 sm:h-[380px] sm:w-[340px]">
           <div className="flex items-center justify-between border-b border-[#E2E8F0] bg-[#F8F5FF] px-3 py-2.5">
             <span className="text-[13px] font-bold text-[#0C2A43]">Harvest AI</span>
             <button type="button" onClick={() => setOpen(false)} className="cursor-pointer text-[#475569]">

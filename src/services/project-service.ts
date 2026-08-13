@@ -58,13 +58,21 @@ function toProjectBody(projectData: Partial<Project>, forCreate = false) {
       : undefined;
 
   let budget: Record<string, unknown> | undefined;
-  if (projectData.type === 'FIXED_FEE' || amount !== undefined) {
+  if (
+    projectData.type === 'FIXED_FEE' ||
+    projectData.type === 'MONTHLY' ||
+    amount !== undefined
+  ) {
     budget = compactBody({
       type:
         projectData.budget?.type ||
-        (projectData.type === 'FIXED_FEE' ? 'TOTAL_AMOUNT' : undefined),
+        (projectData.type === 'FIXED_FEE' || projectData.type === 'MONTHLY'
+          ? 'TOTAL_AMOUNT'
+          : undefined),
       totalHours: hours,
-      totalAmount: amount ?? (projectData.type === 'FIXED_FEE' ? 0 : undefined),
+      totalAmount:
+        amount ??
+        (projectData.type === 'FIXED_FEE' || projectData.type === 'MONTHLY' ? 0 : undefined),
       warnThresholds: projectData.budget?.warnThresholds,
     });
     if (Object.keys(budget).length === 0) budget = undefined;

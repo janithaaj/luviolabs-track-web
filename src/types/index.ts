@@ -101,7 +101,7 @@ export interface CreateExpenseInput {
   notes?: string;
 }
 
-export type ProjectType = 'TIME_AND_MATERIALS' | 'FIXED_FEE' | 'NON_BILLABLE';
+export type ProjectType = 'TIME_AND_MATERIALS' | 'FIXED_FEE' | 'MONTHLY' | 'NON_BILLABLE';
 export type ProjectStatus = 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'ARCHIVED';
 export type BudgetType = 'TOTAL_HOURS' | 'TOTAL_AMOUNT' | 'HOURS_PER_PERSON' | 'HOURS_PER_TASK';
 

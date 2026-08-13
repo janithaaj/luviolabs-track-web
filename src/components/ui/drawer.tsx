@@ -44,10 +44,10 @@ export const Drawer: React.FC<DrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="fixed inset-0 bg-black/40 transition-opacity" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-0 sm:pl-10">
         <div
           className={cn(
-            'flex w-screen flex-col overflow-y-auto border-l border-[#E2E8F0] bg-white p-6 shadow-xl',
+            'flex h-full w-screen flex-col overflow-y-auto border-l border-[#E2E8F0] bg-white p-4 shadow-xl sm:p-6',
             widths[width]
           )}
         >

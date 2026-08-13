@@ -142,7 +142,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         teamMemberIds: selectedMemberIds,
         taskIds: project.taskIds,
         budget:
-          type === 'FIXED_FEE'
+          type === 'FIXED_FEE' || type === 'MONTHLY'
             ? {
                 type: 'TOTAL_AMOUNT',
                 totalAmount: parseFloat(fixedFeeAmount) || 0,
@@ -284,6 +284,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               options={[
                 { value: 'TIME_AND_MATERIALS', label: 'Time & Materials' },
                 { value: 'FIXED_FEE', label: 'Fixed Fee' },
+                { value: 'MONTHLY', label: 'Monthly' },
                 { value: 'NON_BILLABLE', label: 'Non-Billable' },
               ]}
             />
@@ -324,9 +325,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               value={budgetHours}
               onChange={(e) => setBudgetHours(e.target.value)}
             />
-            {type === 'FIXED_FEE' ? (
+            {type === 'FIXED_FEE' || type === 'MONTHLY' ? (
               <Input
-                label={`Fixed fee (${currency})`}
+                label={
+                  type === 'MONTHLY'
+                    ? `Monthly fee (${currency})`
+                    : `Fixed fee (${currency})`
+                }
                 type="number"
                 min="0"
                 step="0.01"
@@ -373,15 +378,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <span className="text-[#475569]">Type:</span>
               <Badge variant="billable">{project.type.replaceAll('_', ' ')}</Badge>
             </div>
-            {project.type === 'FIXED_FEE' ? (
+            {project.type === 'FIXED_FEE' || project.type === 'MONTHLY' ? (
               <div className="flex justify-between py-1">
-                <span className="text-[#475569]">Fixed fee:</span>
+                <span className="text-[#475569]">
+                  {project.type === 'MONTHLY' ? 'Monthly fee:' : 'Fixed fee:'}
+                </span>
                 <span className="font-semibold tabular-nums text-[#0C2A43]">
                   {project.currency}{' '}
                   {(project.budget.totalAmount ?? 0).toLocaleString(undefined, {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 2,
                   })}
+                  {project.type === 'MONTHLY' ? ' / mo' : ''}
                 </span>
               </div>
             ) : null}
@@ -407,16 +415,20 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
           <div className="space-y-2 border-t border-[#E2E8F0] pt-3">
             <span className="text-xs font-bold uppercase text-[#475569]">Budget Status</span>
-            {project.type === 'FIXED_FEE' && project.budget.totalAmount != null ? (
+            {(project.type === 'FIXED_FEE' || project.type === 'MONTHLY') &&
+            project.budget.totalAmount != null ? (
               <>
                 <div className="flex justify-between pt-1 text-xs">
-                  <span className="text-[#475569]">Fixed fee</span>
+                  <span className="text-[#475569]">
+                    {project.type === 'MONTHLY' ? 'Monthly fee' : 'Fixed fee'}
+                  </span>
                   <span className="font-semibold tabular-nums text-[#0C2A43]">
                     {project.currency}{' '}
                     {project.budget.totalAmount.toLocaleString(undefined, {
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 2,
                     })}
+                    {project.type === 'MONTHLY' ? ' / mo' : ''}
                   </span>
                 </div>
                 {project.budget.totalHours ? (

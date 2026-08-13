@@ -61,7 +61,7 @@ export const WeekNavigator: React.FC<WeekNavigatorProps> = ({
           if (onJumpToday) onJumpToday();
           else if (useStore) store.jumpToToday();
         }}
-        className="min-w-[180px] px-1 text-center hover:text-[#9333EA] cursor-pointer"
+        className="min-w-0 max-w-[200px] truncate px-1 text-center text-[12px] hover:text-[#9333EA] cursor-pointer sm:min-w-[180px] sm:max-w-none sm:text-[13px]"
         title="Jump to this week"
       >
         {label}

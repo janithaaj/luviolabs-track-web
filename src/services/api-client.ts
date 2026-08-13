@@ -17,7 +17,7 @@ function setSessionCookie(on: boolean) {
   if (typeof document === 'undefined') return;
   if (on) {
     const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `${SESSION_COOKIE}=1; Path=/; SameSite=Lax${secure}`;
+    document.cookie = `${SESSION_COOKIE}=1; Path=/; Max-Age=3600; SameSite=Lax${secure}`;
   } else {
     document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
   }

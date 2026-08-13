@@ -77,7 +77,7 @@ export const TimerWidget: React.FC = () => {
   return (
     <>
       {activeTimer ? (
-        <div className="flex items-center gap-3 bg-white border border-[#E2E8F0] px-3 py-1.5 rounded-xl shadow-sm timer-active-pulse w-fit" id="luvio-active-timer">
+        <div className="flex w-full max-w-full flex-wrap items-center gap-2 bg-white border border-[#E2E8F0] px-3 py-1.5 rounded-xl shadow-sm timer-active-pulse sm:w-fit sm:gap-3" id="luvio-active-timer">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-md bg-[#F5F0FF] text-[#9333EA] animate-pulse">
               <Clock className="w-4 h-4" />
@@ -160,7 +160,7 @@ export const TimerWidget: React.FC = () => {
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-          <div className="flex items-center justify-between gap-3 border-t border-[#EBE4FF] pt-4">
+          <div className="flex flex-col-reverse gap-2 border-t border-[#EBE4FF] pt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <Button
               variant="ghost"
               onClick={async () => {
@@ -175,6 +175,7 @@ export const TimerWidget: React.FC = () => {
             <div className="flex gap-2">
               <Button
                 variant="outline"
+                className="flex-1 sm:flex-none"
                 onClick={() => {
                   setStopModalOpen(false);
                   setError('');
@@ -182,7 +183,12 @@ export const TimerWidget: React.FC = () => {
               >
                 Cancel
               </Button>
-              <Button variant="primary" onClick={handleSaveTimerEntry} isLoading={isSaving}>
+              <Button
+                variant="primary"
+                className="flex-1 sm:flex-none"
+                onClick={handleSaveTimerEntry}
+                isLoading={isSaving}
+              >
                 Save entry
               </Button>
             </div>

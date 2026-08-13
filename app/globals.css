@@ -78,8 +78,16 @@
     color: var(--foreground);
     font-family: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
   }
 
   h1,
@@ -136,9 +144,25 @@
 }
 
 .harvest-page {
-  max-width: 1120px;
+  max-width: 1360px;
   margin: 0 auto;
   width: 100%;
+}
+
+.harvest-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.harvest-table-wrap table {
+  min-width: 640px;
+}
+
+@media (max-width: 640px) {
+  .harvest-page h1 {
+    font-size: 1.375rem;
+    line-height: 1.25;
+  }
 }
 
 .brand-gradient {

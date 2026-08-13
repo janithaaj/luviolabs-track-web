@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../../../src/store/use-auth-store';
 import { Select } from '../../../../../src/components/ui/select';
 import { DEPARTMENTS } from '../../../../../src/lib/constants';
+import { departmentService } from '../../../../../src/services/department-service';
 
 /** Plain numeric string for <input type="number"> (commas make the field appear empty). */
 function toNumberInputValue(n: number | undefined | null): string {
@@ -59,6 +60,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   const [submission, setSubmission] = useState<WeeklySubmission | null>(null);
   const [profileName, setProfileName] = useState('');
   const [profileDepartment, setProfileDepartment] = useState('');
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>(DEPARTMENTS);
   const [profileStatus, setProfileStatus] = useState<UserStatus>('ACTIVE');
   const [monthlySalary, setMonthlySalary] = useState('');
   const [costRate, setCostRate] = useState('');
@@ -76,8 +78,13 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     const load = async () => {
       setLoadError('');
       try {
-        const u = await teamService.getUserById(userId);
+        const [u, depts] = await Promise.all([
+          teamService.getUserById(userId),
+          departmentService.getDepartments().catch(() => []),
+        ]);
         if (cancelled) return;
+        const names = depts.map((d) => d.name).filter(Boolean);
+        if (names.length > 0) setDepartmentOptions(names);
         if (!u) {
           setUser(null);
           setLoadError('Could not load this team member.');
@@ -85,7 +92,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
         }
         setUser(u);
         setProfileName(u.name);
-        setProfileDepartment(u.department || DEPARTMENTS[0] || 'Engineering');
+        setProfileDepartment(u.department || names[0] || DEPARTMENTS[0] || 'Engineering');
         setProfileStatus((u.status as UserStatus) || 'ACTIVE');
         applyPayFields(u, {
           setMonthlySalary,
@@ -282,7 +289,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               label="Department"
               value={profileDepartment}
               onChange={(e) => setProfileDepartment(e.target.value)}
-              options={DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+              options={departmentOptions.map((d) => ({ value: d, label: d }))}
             />
             <Select
               label="Status"

@@ -6,6 +6,7 @@ import { Button } from '../../../../src/components/ui/button';
 import { Input } from '../../../../src/components/ui/input';
 import { Select } from '../../../../src/components/ui/select';
 import { organizationService } from '../../../../src/services/organization-service';
+import { WorkspaceDepartmentsSection } from '../../../../src/components/common/WorkspaceDepartmentsSection';
 
 interface WorkspaceSettings {
   name: string;
@@ -52,8 +53,22 @@ export default function SettingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash === '#departments') {
+      window.setTimeout(() => {
+        document.getElementById('departments')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, []);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const hours = Number(settings.weeklyCapacity);
+    if (!Number.isFinite(hours) || hours < 1 || hours > 168) {
+      setError('Weekly capacity must be between 1 and 168 hours.');
+      return;
+    }
     setIsSaving(true);
     setError('');
     setMessage('');
@@ -61,7 +76,7 @@ export default function SettingsPage() {
       const org = await organizationService.updateCurrent({
         name: settings.name.trim(),
         currency: settings.currency,
-        weeklyCapacityHours: parseInt(settings.weeklyCapacity, 10) || 40,
+        weeklyCapacityHours: hours,
       });
       setSettings({
         name: org.name,
@@ -82,11 +97,12 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-[28px] font-bold tracking-tight text-[#0C2A43]">Settings</h1>
         <p className="mt-1 text-[13px] text-[#475569]">
-          Workspace branding, currency defaults, and capacity standards.
+          Workspace branding, currency, capacity, and departments.
         </p>
       </div>
 
       <form onSubmit={handleSave} className="harvest-card max-w-xl space-y-4 p-5">
+        <h2 className="text-[16px] font-bold text-[#0C2A43]">Workspace</h2>
         {isLoading ? (
           <p className="text-[13px] text-[#475569]">Loading workspace…</p>
         ) : (
@@ -106,15 +122,19 @@ export default function SettingsPage() {
                 { value: 'USD', label: 'USD (US Dollar)' },
               ]}
             />
-            <Select
-              label="Weekly capacity standard"
+            <Input
+              label="Weekly capacity standard (hours)"
+              type="number"
+              min="1"
+              max="168"
+              step="0.5"
               value={settings.weeklyCapacity}
               onChange={(e) => setSettings({ ...settings, weeklyCapacity: e.target.value })}
-              options={[
-                { value: '35', label: '35 Hours / Week' },
-                { value: '40', label: '40 Hours / Week' },
-              ]}
+              required
             />
+            <p className="-mt-2 text-[12px] text-[#64748B]">
+              Default hours per week for new team members and capacity planning. Any value from 1–168.
+            </p>
           </>
         )}
 
@@ -142,6 +162,8 @@ export default function SettingsPage() {
           </Button>
         </div>
       </form>
+
+      <WorkspaceDepartmentsSection />
     </div>
   );
 }

@@ -95,15 +95,15 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6">
       <div className="fixed inset-0 bg-black/45" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 w-full max-w-[520px] rounded-md border border-[#d6d6d6] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.22)]"
+        className="relative z-10 max-h-[92dvh] w-full max-w-[520px] overflow-y-auto rounded-t-xl border border-[#d6d6d6] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.22)] sm:rounded-md"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[#ebebeb] px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-[#ebebeb] px-4 py-4 sm:px-5">
           <h2 id={titleId} className="text-[20px] font-bold leading-tight text-[#1d1d1d]">
             {mode === 'edit'
               ? 'Edit time entry'
@@ -122,7 +122,7 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({
         </div>
 
         <form
-          className="px-5 py-4"
+          className="px-4 py-4 sm:px-5"
           onSubmit={(e) => {
             e.preventDefault();
             void handlePrimary();

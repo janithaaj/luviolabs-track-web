@@ -44,11 +44,11 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-6">
       <div className="fixed inset-0 bg-black/40 transition-opacity" onClick={onClose} />
       <div
         className={cn(
-          'relative z-10 w-full rounded-xl border border-[#E2E8F0] bg-white p-6 shadow-xl',
+          'relative z-10 max-h-[92dvh] w-full overflow-y-auto rounded-t-xl border border-[#E2E8F0] bg-white p-4 shadow-xl sm:max-h-[90vh] sm:rounded-xl sm:p-6',
           maxWidths[maxWidth]
         )}
       >

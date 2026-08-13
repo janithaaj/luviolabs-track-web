@@ -427,15 +427,16 @@ export const invoiceService = {
       groupBy,
     });
 
-    // Fixed fee: client bill is the project price (not hourly rollup). Cost stays labor + expenses.
+    // Fixed fee / monthly: client bill is the project price (not hourly rollup). Cost stays labor + expenses.
     if (
-      singleProj?.type === 'FIXED_FEE' &&
+      (singleProj?.type === 'FIXED_FEE' || singleProj?.type === 'MONTHLY') &&
       (singleProj.budget?.totalAmount ?? 0) > 0
     ) {
       const fee = singleProj.budget.totalAmount || 0;
+      const feeLabel = singleProj.type === 'MONTHLY' ? 'monthly fee' : 'fixed fee';
       const feeItem = {
         id: `fee-${Date.now()}`,
-        description: `${singleProj.name} — fixed fee (${startDate} → ${endDate})`,
+        description: `${singleProj.name} — ${feeLabel} (${startDate} → ${endDate})`,
         hoursOrQty: 1,
         unitPrice: fee,
         amount: fee,
@@ -449,7 +450,7 @@ export const invoiceService = {
       );
       draftBuilt.draft.subtotal = subtotal;
       draftBuilt.draft.totalAmount = subtotal;
-      draftBuilt.draft.notes = `Fixed fee + expenses for ${startDate} – ${endDate}`;
+      draftBuilt.draft.notes = `${singleProj.type === 'MONTHLY' ? 'Monthly' : 'Fixed'} fee + expenses for ${startDate} – ${endDate}`;
       draftBuilt.cost.clientBillable = subtotal;
       draftBuilt.cost.margin = round2(subtotal - draftBuilt.cost.deliveryCost);
       draftBuilt.cost.marginPercent =

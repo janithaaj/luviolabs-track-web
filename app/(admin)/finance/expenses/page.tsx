@@ -160,7 +160,7 @@ export default function ExpensesPage() {
 
       <div className="space-y-2">
         {expenses.map((exp) => (
-          <div key={exp.id} className="harvest-card flex items-center gap-3 p-4">
+          <div key={exp.id} className="harvest-card flex flex-wrap items-center gap-3 p-4 sm:flex-nowrap">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#F5F0FF] text-[#9333EA]">
               <Receipt className="h-5 w-5" />
             </div>

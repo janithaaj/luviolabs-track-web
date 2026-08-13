@@ -64,7 +64,7 @@ export const GettingStartedPayrollBar: React.FC<GettingStartedPayrollBarProps> =
   }
 
   return (
-    <div className="harvest-card flex items-center justify-between gap-4 px-4 py-3">
+    <div className="harvest-card flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="flex items-center gap-3 min-w-0">
         <div className="relative flex h-8 w-8 shrink-0 items-center justify-center">
           <svg viewBox="0 0 32 32" className="absolute inset-0 h-8 w-8 -rotate-90">

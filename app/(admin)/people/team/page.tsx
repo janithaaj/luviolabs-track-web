@@ -23,6 +23,7 @@ import { useAuthStore } from '../../../../src/store/use-auth-store';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DEPARTMENTS } from '../../../../src/lib/constants';
+import { departmentService } from '../../../../src/services/department-service';
 import { costRateFromMonthlySalary, formatCurrency } from '../../../../src/lib/utils';
 
 export default function AdminTeamPage() {
@@ -30,6 +31,7 @@ export default function AdminTeamPage() {
   const { currentUser, createEmployee } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>(DEPARTMENTS);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('EVERYONE');
   const [activeTab, setActiveTab] = useState<'Members' | 'Assignments'>('Members');
@@ -58,9 +60,18 @@ export default function AdminTeamPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadUsers = async () => {
-    const [u, p] = await Promise.all([teamService.getUsers(), projectService.getProjects()]);
+    const [u, p, depts] = await Promise.all([
+      teamService.getUsers(),
+      projectService.getProjects(),
+      departmentService.getDepartments().catch(() => []),
+    ]);
     setUsers(u);
     setProjects(p);
+    const names = depts.map((d) => d.name).filter(Boolean);
+    if (names.length > 0) {
+      setDepartmentOptions(names);
+      setInviteDepartment((prev) => (names.includes(prev) ? prev : names[0]));
+    }
   };
 
   useEffect(() => {
@@ -116,7 +127,7 @@ export default function AdminTeamPage() {
   const openEdit = (user: User) => {
     setEditingUser(user);
     setEditName(user.name);
-    setEditDepartment(user.department || DEPARTMENTS[0] || 'Engineering');
+    setEditDepartment(user.department || departmentOptions[0] || 'Engineering');
     setEditStatus(user.status || 'ACTIVE');
     setListError('');
     setIsEditOpen(true);
@@ -265,7 +276,7 @@ export default function AdminTeamPage() {
         </div>
       </div>
 
-      <div className="harvest-card overflow-hidden p-0">
+      <div className="harvest-card harvest-table-wrap p-0">
         <table className="w-full text-left text-[13px]">
           <thead>
             <tr className="border-b border-[#E2E8F0] text-[12px] font-semibold text-[#475569]">
@@ -450,7 +461,7 @@ export default function AdminTeamPage() {
             label="Department"
             value={inviteDepartment}
             onChange={(e) => setInviteDepartment(e.target.value)}
-            options={DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+            options={departmentOptions.map((d) => ({ value: d, label: d }))}
           />
           <Input
             label="Monthly salary"
@@ -532,7 +543,7 @@ export default function AdminTeamPage() {
             label="Department"
             value={editDepartment}
             onChange={(e) => setEditDepartment(e.target.value)}
-            options={DEPARTMENTS.map((d) => ({ value: d, label: d }))}
+            options={departmentOptions.map((d) => ({ value: d, label: d }))}
           />
           <Select
             label="Status"
