@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Eye, Plus, Play } from 'lucide-react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '../../../../src/components/ui/button';
 import { Select } from '../../../../src/components/ui/select';
 import { Drawer } from '../../../../src/components/ui/drawer';
 import { Badge } from '../../../../src/components/ui/badge';
+import { Pagination } from '../../../../src/components/ui/pagination';
 import { GettingStartedPayrollBar } from '../../../../src/components/common/GettingStartedPayrollBar';
 import { AiPromptBar } from '../../../../src/components/common/AiPromptBar';
 import { WeekNavigator } from '../../../../src/components/common/WeekNavigator';
@@ -26,10 +27,43 @@ import {
   getWeekDays,
   parseDurationToMinutes,
 } from '../../../../src/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { addWeeks, format, isValid, parseISO, startOfWeek, subWeeks } from 'date-fns';
 import { ActionMenu } from '../../../../src/components/ui/action-menu';
 
 type ViewMode = 'Day' | 'Week' | 'Calendar';
+
+const DEFAULT_PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+
+function currentMonday(): string {
+  return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+}
+
+function parseTimesheetWeek(raw: string | null): string {
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return currentMonday();
+  try {
+    const parsed = parseISO(raw);
+    if (!isValid(parsed)) return currentMonday();
+    return format(startOfWeek(parsed, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  } catch {
+    return currentMonday();
+  }
+}
+
+function parsePage(raw: string | null): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
+function parsePageSize(raw: string | null): number {
+  const n = Number(raw);
+  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? n : DEFAULT_PAGE_SIZE;
+}
+
+function parseView(raw: string | null): ViewMode {
+  if (raw === 'Day' || raw === 'Week' || raw === 'Calendar') return raw;
+  return 'Week';
+}
 
 function statusBadgeVariant(
   status: string
@@ -42,14 +76,19 @@ function statusBadgeVariant(
 }
 
 export default function AdminTimesheetsPage() {
-  const { activeWeekMonday, nextWeek, previousWeek, jumpToToday } = useUIStore();
+  const { setActiveWeekMonday } = useUIStore();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
   const { startTimer, activeTimer } = useTimerStore();
 
-  const [view, setView] = useState<ViewMode>('Week');
+  const weekMonday = parseTimesheetWeek(searchParams.get('week'));
+  const view = parseView(searchParams.get('view'));
+  const selectedUserId = searchParams.get('user') || 'ALL';
+  const page = parsePage(searchParams.get('page'));
+  const pageSize = parsePageSize(searchParams.get('limit'));
+
   const [employees, setEmployees] = useState<User[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('ALL');
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [catalogTasks, setCatalogTasks] = useState<Task[]>([]);
@@ -60,16 +99,36 @@ export default function AdminTimesheetsPage() {
   const [formProjectId, setFormProjectId] = useState('');
   const [formTaskId, setFormTaskId] = useState('');
   const [formDuration, setFormDuration] = useState('');
-  const [formDate, setFormDate] = useState(activeWeekMonday);
+  const [formDate, setFormDate] = useState(weekMonday);
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [viewEntryId, setViewEntryId] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-  const weekDays = getWeekDays(parseISO(activeWeekMonday));
+  const weekDays = getWeekDays(parseISO(weekMonday));
   const startDate = formatDateString(weekDays[0]);
   const endDate = formatDateString(weekDays[6]);
+
+  const setQuery = useCallback(
+    (patch: Record<string, string | number | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('open');
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null || value === '') params.delete(key);
+        else params.set(key, String(value));
+      }
+      if (params.get('page') === '1') params.delete('page');
+      if (params.get('view') === 'Week') params.delete('view');
+      if (params.get('user') === 'ALL') params.delete('user');
+      if (params.get('limit') === String(DEFAULT_PAGE_SIZE)) params.delete('limit');
+      if (params.get('week') === currentMonday()) params.delete('week');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
   const sortedEntries = useMemo(() => {
     return [...entries].sort((a, b) => {
@@ -78,32 +137,51 @@ export default function AdminTimesheetsPage() {
     });
   }, [entries]);
 
+  const totalPages = Math.max(1, Math.ceil(sortedEntries.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pagedEntries = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return sortedEntries.slice(start, start + pageSize);
+  }, [sortedEntries, safePage, pageSize]);
+
   const viewIndex = viewEntryId
     ? sortedEntries.findIndex((e) => e.id === viewEntryId)
     : -1;
   const viewingEntry = viewIndex >= 0 ? sortedEntries[viewIndex] : null;
 
   const load = async () => {
-    const [emps, allEntries, projs, catalog] = await Promise.all([
+    const [emps, weekEntries, projs, catalog] = await Promise.all([
       teamService.getEmployees(),
-      timesheetService.getAllEntries(),
+      selectedUserId === 'ALL'
+        ? timesheetService.getAllEntries({ from: startDate, to: endDate })
+        : timesheetService.getEntriesForUserAndRange(selectedUserId, startDate, endDate),
       projectService.getProjects(),
       taskService.getTasks(),
     ]);
     setEmployees(emps);
     setProjects(projs);
     setCatalogTasks(catalog);
-    const inWeek = allEntries.filter((e) => e.date >= startDate && e.date <= endDate);
-    setEntries(
-      selectedUserId === 'ALL' ? inWeek : inWeek.filter((e) => e.userId === selectedUserId)
-    );
+    setEntries(weekEntries.filter((e) => e.date >= startDate && e.date <= endDate));
+    setHasLoaded(true);
     if (!formUserId && emps[0]) setFormUserId(emps[0].id);
     if (!formProjectId && projs[0]) setFormProjectId(projs[0].id);
   };
 
   useEffect(() => {
+    setHasLoaded(false);
     load();
-  }, [activeWeekMonday, selectedUserId]);
+  }, [weekMonday, selectedUserId]);
+
+  useEffect(() => {
+    setActiveWeekMonday(weekMonday);
+  }, [weekMonday, setActiveWeekMonday]);
+
+  useEffect(() => {
+    if (!hasLoaded) return;
+    if (page > totalPages) {
+      setQuery({ page: totalPages });
+    }
+  }, [hasLoaded, page, totalPages, setQuery]);
 
   const selectedProject = projects.find((p) => p.id === formProjectId);
   const tasks = catalogTasks.filter((t) =>
@@ -153,7 +231,7 @@ export default function AdminTimesheetsPage() {
   useEffect(() => {
     if (searchParams.get('open') === 'timer') {
       openStartTimer();
-      router.replace('/work/timesheets');
+      setQuery({ open: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -212,7 +290,7 @@ export default function AdminTimesheetsPage() {
       setMessage('Select a teammate to copy last week.');
       return;
     }
-    await timesheetService.copyPreviousWeek(selectedUserId, activeWeekMonday);
+    await timesheetService.copyPreviousWeek(selectedUserId, weekMonday);
     setMessage('Copied projects from last week.');
     load();
   };
@@ -248,7 +326,7 @@ export default function AdminTimesheetsPage() {
               <button
                 key={mode}
                 type="button"
-                onClick={() => setView(mode)}
+                onClick={() => setQuery({ view: mode, page: 1 })}
                 className={`rounded px-3 py-1.5 text-[13px] font-semibold cursor-pointer ${
                   view === mode
                     ? 'border border-[#E2E8F0] bg-white text-[#0C2A43] shadow-sm'
@@ -262,7 +340,7 @@ export default function AdminTimesheetsPage() {
           <div className="w-48">
             <Select
               value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
+              onChange={(e) => setQuery({ user: e.target.value, page: 1 })}
               options={[
                 { value: 'ALL', label: 'All teammates' },
                 ...employees.map((u) => ({ value: u.id, label: u.name })),
@@ -294,10 +372,20 @@ export default function AdminTimesheetsPage() {
           {activeTimer ? 'Timer running' : 'Start timer'}
         </button>
         <WeekNavigator
-          weekStart={activeWeekMonday}
-          onPrev={previousWeek}
-          onNext={nextWeek}
-          onJumpToday={jumpToToday}
+          weekStart={weekMonday}
+          onPrev={() =>
+            setQuery({
+              week: format(subWeeks(parseISO(weekMonday), 1), 'yyyy-MM-dd'),
+              page: 1,
+            })
+          }
+          onNext={() =>
+            setQuery({
+              week: format(addWeeks(parseISO(weekMonday), 1), 'yyyy-MM-dd'),
+              page: 1,
+            })
+          }
+          onJumpToday={() => setQuery({ week: currentMonday(), page: 1 })}
         />
         <span className="text-[13px] font-semibold text-[#475569]">
           Total: {formatMinutesToHoursString(totalMins)}
@@ -333,7 +421,7 @@ export default function AdminTimesheetsPage() {
             <div className="harvest-empty flex flex-col items-center justify-center px-6 py-16 text-center">
               <CalendarClocksGraphic className="mb-5 h-28 w-28" />
               <p className="max-w-md text-[14px] leading-relaxed text-[#1E293B]">
-                No hours for {formatWeekRangeString(parseISO(activeWeekMonday))}. Add a row or
+                No hours for {formatWeekRangeString(parseISO(weekMonday))}. Add a row or
                 switch teammate.
               </p>
             </div>
@@ -352,7 +440,7 @@ export default function AdminTimesheetsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F5F9]">
-                  {sortedEntries.map((e) => (
+                  {pagedEntries.map((e) => (
                     <tr
                       key={e.id}
                       className="cursor-pointer hover:bg-[#F8FAFC]"
@@ -392,6 +480,13 @@ export default function AdminTimesheetsPage() {
                   ))}
                 </tbody>
               </table>
+              <Pagination
+                page={safePage}
+                totalItems={sortedEntries.length}
+                pageSize={pageSize}
+                onPageChange={(next) => setQuery({ page: next })}
+                onPageSizeChange={(limit) => setQuery({ limit, page: 1 })}
+              />
             </div>
           )}
         </>
